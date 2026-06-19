@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+
+# Block admin API — no value to index
+Disallow: /api/
+
+Sitemap: SITEMAP_URL_PLACEHOLDER

@@ -1,0 +1,33 @@
+services:
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    # Not exposed to host — only reachable from the frontend nginx container
+    environment:
+      NODE_ENV: production
+      DB_PATH: /data/worldcup2026.db
+    env_file:
+      - ./backend/.env
+    volumes:
+      - db_data:/data
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      BACKEND_URL: http://backend:6173
+      DOMAIN: "${DOMAIN:-}"
+      CERT_EMAIL: "${CERT_EMAIL:-}"
+    depends_on:
+      - backend
+    volumes:
+      - certbot_etc:/etc/letsencrypt
+      - certbot_var:/var/www/certbot
+
+volumes:
+  db_data:
+  certbot_etc:
+  certbot_var:

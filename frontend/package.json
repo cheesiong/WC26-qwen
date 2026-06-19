@@ -1,0 +1,71 @@
+{
+  "name": "worldcup2026-predictor-frontend",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "World Cup 2026 prediction app frontend",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "postbuild": "react-snap || echo 'Pre-rendering skipped'",
+    "preview": "vite preview",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "lint": "eslint .",
+    "format": "prettier --write ."
+  },
+  "reactSnap": {
+    "source": "dist",
+    "puppeteerArgs": [
+      "--no-sandbox",
+      "--disable-setuid-sandbox"
+    ],
+    "include": [
+      "/",
+      "/about",
+      "/predictions",
+      "/schedule",
+      "/matches",
+      "/groups",
+      "/tournament",
+      "/analytics"
+    ],
+    "crawl": false,
+    "inlineCss": false,
+    "saveAs": "html",
+    "skipThirdPartyRequests": true,
+    "waitFor": 2000
+  },
+  "dependencies": {
+    "axios": "^1.7.2",
+    "canvas-confetti": "^1.9.4",
+    "framer-motion": "^12.40.0",
+    "lucide-react": "^0.383.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-helmet-async": "^3.0.0",
+    "react-router-dom": "^6.24.1",
+    "recharts": "^2.12.7"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.4",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
+    "@vitejs/plugin-react": "^4.3.1",
+    "autoprefixer": "^10.4.19",
+    "eslint": "^9.39.4",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.2",
+    "globals": "^17.6.0",
+    "jsdom": "^27.0.1",
+    "postcss": "^8.4.39",
+    "prettier": "^3.8.3",
+    "react-snap": "^1.23.0",
+    "sharp": "^0.34.5",
+    "tailwindcss": "^3.4.6",
+    "vite": "^5.3.3",
+    "vitest": "^3.2.4"
+  }
+}

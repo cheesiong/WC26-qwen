@@ -1,0 +1,782 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Chinese Landscape Painting Color Constants (山水画色彩) ─────────── */
+:root {
+  /* Ink-wash dark palette */
+  --dk-bg:        #1C2833;
+  --dk-surface:   #2C3E50;
+  --dk-raised:    #34495E;
+  --dk-text:      #FAF3EB;
+  --dk-secondary: #BDC3C7;
+  --dk-tertiary:  #95A5A6;
+  --dk-red:       #E74C3C;
+  --dk-red-hover: #C0392B;
+  --dk-gold:      #E8C547;
+  --dk-gold-hi:   #F0D060;
+  --dk-jade:      #7FB37A;
+  --dk-jade-hi:   #93C48E;
+  --bracket-stroke: rgba(212, 160, 60, 0.25);
+
+  /* WC palette dark-mode equivalents */
+  --wc-bg:         #1C2833;
+  --wc-surface:    #2C3E50;
+  --wc-red:        #E74C3C;
+  --wc-red-hover:  #C0392B;
+  --wc-blue:       #E74C3C;
+  --wc-blue-hi:    #C0392B;
+  --wc-gold:       #E8C547;
+  --wc-gold-hi:    #F0D060;
+  --wc-pitch:      #7FB37A;
+  --wc-pitch-hi:   #93C48E;
+  --wc-sunset:     #E8C547;
+  --wc-sunset-hi:  #F0D060;
+  --wc-sky:        #6B9BC3;
+  --wc-cream:      #2C3E50;
+  --wc-ink:        #FAF3EB;
+}
+
+@layer base {
+  body {
+    @apply bg-apple-bg text-apple-text antialiased;
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Ink-wash mountain silhouette pattern — landscape painting motif */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    opacity: 0.04;
+    background-image: url("data:image/svg+xml,%3Csvg width='120' height='120' viewBox='0 0 120 120' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 90 Q15 60 30 75 Q45 50 60 70 Q75 45 90 65 Q105 55 120 80' fill='none' stroke='%23C0392B' stroke-width='0.5' stroke-opacity='0.6'/%3E%3Cpath d='M0 100 Q20 75 40 85 Q60 65 80 78 Q100 60 120 90' fill='none' stroke='%23D4A03C' stroke-width='0.4' stroke-opacity='0.4'/%3E%3Cpath d='M10 110 C20 105 25 108 35 105 C45 102 50 106 60 103' fill='none' stroke='%234A7C59' stroke-width='0.3' stroke-opacity='0.4'/%3E%3C/svg%3E");
+    background-size: 120px 120px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Warm ambient glow — amber and peach (landscape sunset) */
+  body::after {
+    content: '';
+    position: fixed;
+    top: -200px;
+    right: 10%;
+    width: 700px;
+    height: 600px;
+    background: radial-gradient(ellipse at center, rgba(212, 160, 60, 0.06), rgba(232, 130, 138, 0.03) 50%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  html.dark body::before {
+    opacity: 0.08;
+    background-image: url("data:image/svg+xml,%3Csvg width='120' height='120' viewBox='0 0 120 120' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 90 Q15 60 30 75 Q45 50 60 70 Q75 45 90 65 Q105 55 120 80' fill='none' stroke='%23E8C547' stroke-width='0.8' stroke-opacity='0.7'/%3E%3Cpath d='M0 100 Q20 75 40 85 Q60 65 80 78 Q100 60 120 90' fill='none' stroke='%23E74C3C' stroke-width='0.7' stroke-opacity='0.6'/%3E%3Cpath d='M10 110 C20 105 25 108 35 105 C45 102 50 106 60 103' fill='none' stroke='%237FB37A' stroke-width='0.6' stroke-opacity='0.6'/%3E%3C/svg%3E");
+  }
+
+  html.dark body::after {
+    background: radial-gradient(ellipse at center, rgba(231, 76, 60, 0.14), rgba(230, 126, 34, 0.08) 40%, transparent 65%);
+  }
+
+  #root {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Ambient glow 1 — cherry blossom pink at bottom-left */
+  html.dark #root::before {
+    content: '';
+    position: fixed;
+    bottom: 15%;
+    left: -8%;
+    width: 700px;
+    height: 700px;
+    background: radial-gradient(ellipse at center, rgba(232, 130, 138, 0.16), rgba(155, 126, 200, 0.08) 50%, transparent 70%);
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  /* Ambient glow 2 — emerald green at top-left */
+  html.dark #root::after {
+    content: '';
+    position: fixed;
+    top: 25%;
+    left: 3%;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(ellipse at center, rgba(46, 204, 113, 0.10), rgba(52, 152, 219, 0.06) 50%, transparent 70%);
+    pointer-events: none;
+    z-index: -1;
+  }
+}
+
+@layer components {
+  /* ── Card base — clean landscape surface ──────── */
+  .card {
+    @apply bg-apple-surface rounded-2xl border border-black/[0.08] shadow-apple-sm transition-all duration-300 ease-apple;
+  }
+
+  .card-hover {
+    @apply hover:-translate-y-[3px] hover:shadow-apple-xl;
+  }
+
+  .card-hover-glow {
+    @apply hover:-translate-y-[3px] hover:shadow-glow-red transition-all duration-300 ease-apple;
+  }
+
+  /* Hero card — warm rice paper gradient */
+  .card-hero {
+    border-radius: 28px;
+    border: 1px solid rgba(212, 160, 60, 0.15);
+    box-shadow: 0 4px 16px rgba(28, 40, 51, 0.06), 0 1px 4px rgba(28, 40, 51, 0.04);
+    overflow: hidden;
+    background: linear-gradient(135deg, #FAF3EB 0%, #F5E6D3 100%);
+  }
+
+  /* Imperial card — terracotta gradient */
+  .card-imperial {
+    @apply rounded-2xl text-white overflow-hidden;
+    background: linear-gradient(135deg, #C0392B 0%, #A93226 60%, #8B2500 100%);
+    box-shadow: 0 8px 28px -6px rgba(192, 57, 43, 0.40), 0 2px 8px rgba(192, 57, 43, 0.18);
+  }
+
+  /* Pitch card — pine green gradient */
+  .card-pitch {
+    @apply rounded-2xl text-white overflow-hidden;
+    background: linear-gradient(135deg, #3A6B4A 0%, #4A7C59 60%, #7FB37A 100%);
+    box-shadow: 0 8px 28px -6px rgba(74, 124, 89, 0.40), 0 2px 8px rgba(74, 124, 89, 0.18);
+  }
+
+  /* Trophy/sunset gradient card */
+  .card-trophy {
+    @apply rounded-2xl text-white overflow-hidden;
+    background: linear-gradient(135deg, #D4A03C 0%, #C0392B 100%);
+    box-shadow: 0 8px 28px -6px rgba(212, 160, 60, 0.45), 0 2px 8px rgba(212, 160, 60, 0.20);
+  }
+
+  /* Ink night card */
+  .card-night {
+    @apply rounded-2xl text-white overflow-hidden;
+    background: linear-gradient(135deg, #1C2833 0%, #2C3E50 100%);
+    box-shadow: 0 8px 28px -6px rgba(28, 40, 51, 0.60), 0 2px 8px rgba(28, 40, 51, 0.30);
+  }
+
+  /* Gold chip / seal stamp */
+  .chip-gold {
+    @apply inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider;
+    border-radius: 999px;
+    background: rgba(212, 160, 60, 0.15);
+    color: #8A7020;
+  }
+
+  /* Eyebrow text */
+  .eyebrow {
+    @apply font-bold uppercase;
+    color: #C0392B;
+    font-size: 11px;
+    line-height: 1;
+    letter-spacing: 0.12em;
+  }
+
+  /* Seal stamp utility */
+  .seal-stamp {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid rgba(192, 57, 43, 0.45);
+    border-radius: 4px;
+    padding: 2px 6px;
+    color: #C0392B;
+    font-weight: 700;
+    font-size: 11px;
+    transform: rotate(-2deg);
+    line-height: 1;
+  }
+
+  .btn-primary {
+    @apply bg-cn-red hover:bg-cn-red-hover text-white px-4 py-1.5 rounded-full text-sm font-semibold transition-all duration-200;
+    @apply active:scale-[0.97] active:opacity-90;
+  }
+  .btn-primary:hover {
+    box-shadow: 0 0 0 4px rgba(192, 57, 43, 0.2);
+  }
+
+  .btn-secondary {
+    @apply bg-white/70 text-apple-text px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200;
+    @apply border border-black/[0.12] hover:bg-white hover:shadow-apple-sm active:scale-[0.97] active:opacity-80;
+    backdrop-filter: blur(8px);
+  }
+
+  .btn-wc {
+    @apply bg-cn-red text-white px-4 py-1.5 rounded-full text-sm font-semibold transition-all duration-200;
+    @apply active:scale-[0.97] active:opacity-90;
+  }
+  .btn-wc:hover {
+    background-color: #A93226;
+    box-shadow: 0 8px 28px -6px rgba(192, 57, 43, 0.40), 0 2px 8px rgba(192, 57, 43, 0.18);
+  }
+
+  .tab-bar-safe {
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
+  }
+
+  /* ── Imperial card — warm rice paper with amber hairline border ──────── */
+  .imperial-card {
+    @apply rounded-2xl border transition-all duration-300 ease-apple;
+    background: linear-gradient(135deg, #FAF3EB 0%, #F5E6D3 100%);
+    border-color: rgba(212, 160, 60, 0.20);
+    box-shadow: 0 4px 20px rgba(28,40,51,0.06), 0 1px 4px rgba(28,40,51,0.04), inset 0 1px 0 rgba(255,255,255,0.6);
+  }
+
+  /* ── Landscape card (山水画卡片) — warm parchment ──────── */
+  .tang-card {
+    @apply rounded-2xl border transition-all duration-300 ease-apple;
+    background: linear-gradient(160deg, #FAF3EB 0%, #F5E6D3 50%, #EDE0CC 100%);
+    border-color: rgba(212, 160, 60, 0.28);
+    box-shadow: 0 4px 20px rgba(192,57,43,0.06), 0 1px 4px rgba(192,57,43,0.03), inset 0 1px 0 rgba(255,255,255,0.7);
+  }
+
+  /* ── Terracotta lacquer card (陶器漆卡片) — deep terracotta-orange ──────── */
+  .tang-lacquer {
+    @apply rounded-2xl border text-white transition-all duration-300 ease-apple;
+    background: linear-gradient(135deg, #C0392B 0%, #E67E22 50%, #D4A03C 100%);
+    border-color: rgba(212, 160, 60, 0.20);
+    box-shadow: 0 8px 32px rgba(192,57,43,0.20), 0 2px 8px rgba(230,126,34,0.10);
+  }
+
+  /* ── Ink-wash dark card (水墨深色卡片) — ink-wash navy/slate ──────── */
+  .tang-palace {
+    @apply rounded-2xl border text-white transition-all duration-300 ease-apple;
+    background: linear-gradient(160deg, #1C2833 0%, #2C3E50 35%, #243342 65%, #1C2833 100%);
+    border-color: rgba(212, 160, 60, 0.15);
+    box-shadow: 0 8px 32px rgba(28,40,51,0.40), 0 2px 8px rgba(28,40,51,0.25), inset 0 1px 0 rgba(255,255,255,0.03);
+  }
+
+  /* ── Amber border (琥珀边框) ──────── */
+  .tang-border {
+    border: 1px solid rgba(212, 160, 60, 0.30);
+    box-shadow: inset 0 0 0 1px rgba(212, 160, 60, 0.10), 0 0 16px rgba(212, 160, 60, 0.08);
+  }
+
+  /* ── Flowing wave/brushstroke divider (波浪笔触分隔线) ──────── */
+  .tang-divider {
+    height: 8px;
+    background-image: url("data:image/svg+xml,%3Csvg width='80' height='8' viewBox='0 0 80 8' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 4 Q10 1 20 4 Q30 7 40 4 Q50 1 60 4 Q70 7 80 4' fill='none' stroke='%23D4A03C' stroke-width='0.8' stroke-opacity='0.3'/%3E%3Cpath d='M0 5 Q10 2 20 5 Q30 8 40 5 Q50 2 60 5 Q70 8 80 5' fill='none' stroke='%234A7C59' stroke-width='0.4' stroke-opacity='0.15'/%3E%3C/svg%3E");
+    background-repeat: repeat-x;
+    background-size: 80px 8px;
+    opacity: 0.7;
+  }
+
+  /* ── Pine branch pattern background (松枝纹背景) ──────────────── */
+  .tang-bat-bg {
+    background-image: url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%234A7C59' stroke-opacity='0.08' stroke-width='0.8'%3E%3Cpath d='M40 15 L35 25 M40 15 L45 25 M40 15 L40 30'/%3E%3Cpath d='M30 30 L35 25 M50 30 L45 25'/%3E%3Cpath d='M25 32 Q32 28 40 32 Q48 28 55 32'/%3E%3C/g%3E%3Cg fill='%23D4A03C' fill-opacity='0.04'%3E%3Ccircle cx='40' cy='60' r='2'/%3E%3Ccircle cx='20' cy='45' r='1.5'/%3E%3Ccircle cx='60' cy='45' r='1.5'/%3E%3C/g%3E%3C/svg%3E");
+    background-size: 80px 80px;
+  }
+
+  /* Water ripple cluster watermark */
+  .tang-bat-cluster::after {
+    content: '';
+    position: absolute;
+    bottom: 8px;
+    right: 12px;
+    width: 64px;
+    height: 64px;
+    opacity: 0.12;
+    pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg width='44' height='44' viewBox='0 0 44 44' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%23D4A03C' stroke-width='1' stroke-opacity='0.5'%3E%3Cpath d='M5 22 Q11 18 17 22 Q23 26 29 22 Q35 18 39 22'/%3E%3Cpath d='M5 28 Q11 24 17 28 Q23 32 29 28 Q35 24 39 28'/%3E%3Cpath d='M5 16 Q11 12 17 16 Q23 20 29 16 Q35 12 39 16'/%3E%3C/g%3E%3Ccircle cx='22' cy='10' r='3' fill='%23C0392B' fill-opacity='0.15'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+  }
+
+  /* Mountain landscape watermark — for dark hero banners */
+  .tang-dragon::before {
+    content: '';
+    position: absolute;
+    bottom: -10px;
+    right: -10px;
+    width: 260px;
+    height: 260px;
+    opacity: 0.22;
+    pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg width='200' height='200' viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%23D4A03C' stroke-width='1.4' stroke-opacity='0.5'%3E%3Cpath d='M10 160 Q40 80 70 120 Q90 60 120 100 Q140 50 170 90 Q185 70 195 110'/%3E%3Cpath d='M10 170 Q50 120 90 140 Q120 90 160 130 Q180 100 195 125'/%3E%3C/g%3E%3Cg fill='none' stroke='%23C0392B' stroke-width='1' stroke-opacity='0.3'%3E%3Cpath d='M30 170 Q50 155 70 165 Q90 150 110 162'/%3E%3Cpath d='M120 168 Q140 155 160 165 Q175 155 190 162'/%3E%3C/g%3E%3Ccircle cx='160' cy='40' r='20' fill='%23E8C547' fill-opacity='0.08' stroke='%23D4A03C' stroke-width='1' stroke-opacity='0.25'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-size: contain;
+  }
+
+  /* Traditional boat on water watermark — alternate for dark banners */
+  .tang-phoenix::before {
+    content: '';
+    position: absolute;
+    bottom: -5px;
+    left: -5px;
+    width: 240px;
+    height: 240px;
+    opacity: 0.20;
+    pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg width='180' height='180' viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%23D4A03C' stroke-width='1.4' stroke-opacity='0.5'%3E%3Cpath d='M50 110 Q60 95 90 90 Q120 85 130 100'/%3E%3Cpath d='M40 115 L65 108 L115 105 L140 112'/%3E%3Cpath d='M90 90 L85 65 L88 60'/%3E%3Cpath d='M88 60 Q95 55 92 65'/%3E%3C/g%3E%3Cg fill='none' stroke='%236B9BC3' stroke-width='0.8' stroke-opacity='0.3'%3E%3Cpath d='M20 130 Q45 120 70 130 Q95 140 120 130 Q145 120 170 130'/%3E%3Cpath d='M15 140 Q40 130 65 140 Q90 150 115 140 Q140 130 165 140'/%3E%3Cpath d='M10 150 Q35 140 60 150 Q85 160 110 150 Q135 140 160 150'/%3E%3C/g%3E%3Cg fill='%23C0392B' fill-opacity='0.06'%3E%3Cpath d='M60 115 Q90 108 120 115 Q90 120 60 115Z'/%3E%3C/g%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-size: contain;
+  }
+
+  /* Pine tree accent — small decorative mark for card corners */
+  .tang-qilin-mark::after {
+    content: '';
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 48px;
+    height: 48px;
+    opacity: 0.18;
+    pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg width='32' height='32' viewBox='0 0 32 32' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%234A7C59' stroke-width='1' stroke-opacity='0.7'%3E%3Cpath d='M16 4 L12 12 M16 4 L20 12 M16 4 L16 18'/%3E%3Cpath d='M10 14 L16 10 L22 14'/%3E%3Cpath d='M8 18 L16 13 L24 18'/%3E%3C/g%3E%3Cpath d='M16 18 L16 28' stroke='%23D4A03C' stroke-width='1' stroke-opacity='0.5'/%3E%3Ccircle cx='16' cy='8' r='1.5' fill='%23C0392B' fill-opacity='0.3'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+  }
+
+  /* ── Ink card — ink-wash navy with amber accent border ──────── */
+  .ink-card {
+    @apply rounded-2xl border transition-all duration-300 ease-apple;
+    background: linear-gradient(160deg, #1C2833 0%, #2C3E50 40%, #243342 100%);
+    border-color: rgba(212, 160, 60, 0.12);
+    box-shadow: 0 4px 24px rgba(28,40,51,0.35), 0 1px 4px rgba(28,40,51,0.25), inset 0 1px 0 rgba(255,255,255,0.03);
+    color: #FAF3EB;
+  }
+
+  /* ── Amber double-line border ──────── */
+  .imperial-border {
+    border: 1px solid rgba(212, 160, 60, 0.25);
+    box-shadow: inset 0 0 0 1px rgba(212, 160, 60, 0.08), 0 0 12px rgba(212, 160, 60, 0.06);
+  }
+
+  /* ── Flowing stream divider ──────── */
+  .meander-divider {
+    height: 6px;
+    background-image: url("data:image/svg+xml,%3Csvg width='40' height='6' viewBox='0 0 40 6' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 3 Q5 1 10 3 Q15 5 20 3 Q25 1 30 3 Q35 5 40 3' fill='none' stroke='%23D4A03C' stroke-width='0.8' stroke-opacity='0.2'/%3E%3C/svg%3E");
+    background-repeat: repeat-x;
+    background-size: 40px 6px;
+    opacity: 0.6;
+  }
+
+  /* ── Ink-spread animation keyframes ──────── */
+  @keyframes ink-spread {
+    from { opacity: 0; transform: scale(0.97); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  .animate-ink-spread {
+    animation: ink-spread 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+  }
+
+  /* ── Glassmorphism card — frosted translucent surface ──────── */
+  .glass-card {
+    @apply rounded-2xl border;
+    background: rgba(250, 243, 235, 0.55);
+    backdrop-filter: blur(24px) saturate(1.6);
+    -webkit-backdrop-filter: blur(24px) saturate(1.6);
+    border-color: rgba(255, 255, 255, 0.45);
+    box-shadow: 0 8px 32px rgba(28, 40, 51, 0.08), 0 2px 8px rgba(28, 40, 51, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  }
+
+  .glass-card-solid {
+    @apply rounded-2xl border;
+    background: rgba(250, 243, 235, 0.85);
+    backdrop-filter: blur(16px) saturate(1.4);
+    -webkit-backdrop-filter: blur(16px) saturate(1.4);
+    border-color: rgba(0, 0, 0, 0.06);
+    box-shadow: 0 4px 24px rgba(28, 40, 51, 0.06), 0 1px 4px rgba(28, 40, 51, 0.04);
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   LIGHT MODE FIXES — tang-palace should be light-themed
+   ══════════════════════════════════════════════════════════════════ */
+
+/* tang-palace in light mode: light background + dark text */
+.tang-palace {
+  background: linear-gradient(160deg, #FAF3EB 0%, #F5E6D3 50%, #EDE0CC 100%);
+  border-color: rgba(212, 160, 60, 0.28);
+  color: #1C2833;
+  box-shadow: 0 4px 20px rgba(192,57,43,0.06), 0 1px 4px rgba(192,57,43,0.03), inset 0 1px 0 rgba(255,255,255,0.7);
+}
+
+/* Fix white/opacity text classes inside tang-palace in light mode */
+.tang-palace .text-white\/90 { color: rgba(28, 40, 51, 0.92); }
+.tang-palace .text-white\/40 { color: rgba(44, 62, 80, 0.55); }
+.tang-palace .text-white\/35 { color: rgba(44, 62, 80, 0.50); }
+.tang-palace .text-white\/70 { color: rgba(44, 62, 80, 0.70); }
+.tang-palace .text-white\/20 { color: rgba(44, 62, 80, 0.25); }
+.tang-palace .text-white\/15 { color: rgba(44, 62, 80, 0.20); }
+.tang-palace .text-cn-gold\/50 { color: rgba(138, 112, 32, 0.70); }
+.tang-palace .text-cn-gold\/60 { color: rgba(138, 112, 32, 0.80); }
+.tang-palace .text-cn-jade\/60 { color: rgba(74, 124, 89, 0.80); }
+
+/* ══════════════════════════════════════════════════════════════════
+   DARK MODE OVERRIDES
+   Outside @layer for higher cascade priority.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── Body & background ─────────────────────────────────────────── */
+.dark body {
+  background-color: var(--dk-bg);
+  color: var(--dk-text);
+}
+
+/* ── Component classes ──────────────────────────────────────────── */
+.dark .card {
+  background-color: var(--dk-surface);
+  border-color: rgba(212, 160, 60, 0.12);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5), 0 1px 4px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.dark .card-hover:hover {
+  box-shadow: 0 16px 56px rgba(0, 0, 0, 0.7), 0 4px 16px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.dark .card-hover-glow:hover {
+  box-shadow: 0 8px 32px -4px rgba(231, 76, 60, 0.45), 0 2px 12px rgba(231, 76, 60, 0.20), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.dark .card-hero {
+  background: linear-gradient(135deg, #2C3E50 0%, #34495E 100%);
+  border-color: rgba(212, 160, 60, 0.15);
+}
+
+.dark .card-imperial {
+  background: linear-gradient(135deg, #A93226 0%, #8B2500 60%, #6B1C00 100%);
+  box-shadow: 0 8px 28px -6px rgba(231, 76, 60, 0.35), 0 2px 8px rgba(231, 76, 60, 0.15);
+}
+
+.dark .chip-gold {
+  background: rgba(232, 197, 71, 0.15);
+  color: var(--wc-gold);
+}
+
+.dark .eyebrow {
+  color: var(--wc-red);
+}
+
+.dark .btn-primary {
+  box-shadow: none;
+}
+.dark .btn-primary:hover {
+  box-shadow: 0 0 0 4px rgba(231, 76, 60, 0.28);
+}
+
+.dark .btn-secondary {
+  background-color: rgba(52, 73, 94, 0.80);
+  border-color: rgba(212, 160, 60, 0.20);
+  color: var(--dk-text);
+}
+.dark .btn-secondary:hover {
+  background-color: var(--dk-raised);
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.5);
+}
+
+.dark .btn-wc {
+  background-color: var(--wc-red);
+}
+.dark .btn-wc:hover {
+  background-color: var(--wc-red-hover);
+  box-shadow: 0 8px 28px -6px rgba(231, 76, 60, 0.50), 0 2px 8px rgba(231, 76, 60, 0.20);
+}
+
+/* ── WC colour utilities ────────────────────────────────────────── */
+.dark .bg-wc-red         { background-color: var(--wc-red); }
+.dark .bg-wc-red-hover   { background-color: var(--wc-red-hover); }
+.dark .bg-wc-blue        { background-color: var(--wc-blue); }
+.dark .bg-wc-blue-hi     { background-color: var(--wc-blue-hi); }
+.dark .bg-wc-gold        { background-color: var(--wc-gold); }
+.dark .bg-wc-gold-hi     { background-color: var(--wc-gold-hi); }
+.dark .bg-wc-pitch       { background-color: var(--wc-pitch); }
+.dark .bg-wc-pitch-hi    { background-color: var(--wc-pitch-hi); }
+.dark .bg-wc-sunset      { background-color: var(--wc-sunset); }
+.dark .bg-wc-sunset-hi   { background-color: var(--wc-sunset-hi); }
+.dark .bg-wc-sky         { background-color: var(--wc-sky); }
+.dark .bg-wc-cream       { background-color: var(--wc-cream); }
+.dark .bg-wc-ink         { background-color: var(--wc-ink); }
+.dark .bg-wc-bg          { background-color: var(--wc-bg); }
+.dark .bg-wc-surface     { background-color: var(--wc-surface); }
+
+/* Opacity-modified backgrounds */
+.dark .bg-wc-blue\/\[0\.04\]  { background-color: rgb(231 76 60 / 0.04); }
+.dark .bg-wc-blue\/\[0\.05\]  { background-color: rgb(231 76 60 / 0.05); }
+.dark .bg-wc-blue\/\[0\.08\]  { background-color: rgb(231 76 60 / 0.08); }
+.dark .bg-wc-blue\/\[0\.10\]  { background-color: rgb(231 76 60 / 0.10); }
+.dark .bg-wc-blue\/\[0\.15\]  { background-color: rgb(231 76 60 / 0.15); }
+.dark .bg-wc-blue\/10          { background-color: rgb(231 76 60 / 0.10); }
+.dark .bg-wc-blue\/15          { background-color: rgb(231 76 60 / 0.15); }
+.dark .bg-wc-blue\/20          { background-color: rgb(231 76 60 / 0.20); }
+.dark .bg-wc-gold\/\[0\.10\]  { background-color: rgb(232 197 71 / 0.10); }
+.dark .bg-wc-gold\/\[0\.15\]  { background-color: rgb(232 197 71 / 0.15); }
+.dark .bg-wc-gold\/15          { background-color: rgb(232 197 71 / 0.15); }
+.dark .bg-wc-gold\/20          { background-color: rgb(232 197 71 / 0.20); }
+.dark .bg-wc-gold\/25          { background-color: rgb(232 197 71 / 0.25); }
+.dark .bg-wc-gold\/30          { background-color: rgb(232 197 71 / 0.30); }
+.dark .bg-wc-gold\/45          { background-color: rgb(232 197 71 / 0.45); }
+.dark .bg-wc-red\/\[0\.10\]   { background-color: rgb(231 76 60 / 0.10); }
+.dark .bg-wc-red\/\[0\.15\]   { background-color: rgb(231 76 60 / 0.15); }
+.dark .bg-wc-pitch\/\[0\.04\] { background-color: rgb(127 179 122 / 0.04); }
+.dark .bg-wc-pitch\/\[0\.05\] { background-color: rgb(127 179 122 / 0.05); }
+.dark .bg-wc-pitch\/\[0\.10\] { background-color: rgb(127 179 122 / 0.10); }
+.dark .bg-wc-pitch\/5          { background-color: rgb(127 179 122 / 0.05); }
+.dark .bg-wc-pitch\/10         { background-color: rgb(127 179 122 / 0.10); }
+
+/* Text colours */
+.dark .text-wc-red      { color: var(--wc-red); }
+.dark .text-wc-blue     { color: var(--wc-blue); }
+.dark .text-wc-blue-hi  { color: var(--wc-blue-hi); }
+.dark .text-wc-gold     { color: var(--wc-gold); }
+.dark .text-wc-gold-hi  { color: var(--wc-gold-hi); }
+.dark .text-wc-pitch    { color: var(--wc-pitch); }
+.dark .text-wc-pitch-hi { color: var(--wc-pitch-hi); }
+.dark .text-wc-sunset   { color: var(--wc-sunset); }
+.dark .text-wc-sky      { color: var(--wc-sky); }
+.dark .text-wc-cream    { color: var(--wc-cream); }
+.dark .text-wc-ink      { color: var(--wc-ink); }
+
+/* Hover text */
+.dark .hover\:text-wc-blue:hover    { color: var(--wc-blue); }
+.dark .hover\:text-wc-gold:hover    { color: var(--wc-gold); }
+.dark .hover\:text-wc-pitch:hover   { color: var(--wc-pitch); }
+
+/* Border colours */
+.dark .border-wc-blue      { border-color: var(--wc-blue); }
+.dark .border-wc-blue\/20  { border-color: rgb(231 76 60 / 0.20); }
+.dark .border-wc-blue\/30  { border-color: rgb(231 76 60 / 0.30); }
+.dark .border-wc-gold      { border-color: var(--wc-gold); }
+.dark .border-wc-gold\/20  { border-color: rgb(232 197 71 / 0.20); }
+.dark .border-wc-gold\/25  { border-color: rgb(232 197 71 / 0.25); }
+.dark .border-wc-gold\/30  { border-color: rgb(232 197 71 / 0.30); }
+.dark .border-wc-gold\/40  { border-color: rgb(232 197 71 / 0.40); }
+.dark .border-wc-pitch     { border-color: var(--wc-pitch); }
+.dark .border-wc-pitch\/30 { border-color: rgb(127 179 122 / 0.30); }
+.dark .border-wc-red       { border-color: var(--wc-red); }
+.dark .border-wc-red\/30   { border-color: rgb(231 76 60 / 0.30); }
+
+/* Ring */
+.dark .ring-wc-gold        { --tw-ring-color: var(--wc-gold); }
+.dark .ring-wc-blue        { --tw-ring-color: var(--wc-blue); }
+
+/* Hover backgrounds */
+.dark .hover\:bg-wc-blue\/\[0\.18\]:hover { background-color: rgb(231 76 60 / 0.18); }
+.dark .hover\:bg-wc-blue\/20:hover        { background-color: rgb(231 76 60 / 0.20); }
+.dark .hover\:bg-wc-gold\/20:hover        { background-color: rgb(232 197 71 / 0.20); }
+.dark .hover\:shadow-glow-blue:hover {
+  box-shadow: 0 8px 36px -4px rgba(231, 76, 60, 0.55), 0 2px 12px rgba(231, 76, 60, 0.25);
+}
+.dark .hover\:shadow-glow-gold:hover {
+  box-shadow: 0 8px 36px -4px rgba(232, 197, 71, 0.55), 0 2px 12px rgba(232, 197, 71, 0.25);
+}
+.dark .hover\:shadow-glow-pitch:hover {
+  box-shadow: 0 8px 36px -4px rgba(127, 179, 122, 0.55), 0 2px 12px rgba(127, 179, 122, 0.25);
+}
+
+/* ── Solid apple background utilities ──────────────────────────── */
+.dark .bg-apple-bg      { background-color: var(--dk-bg); }
+.dark .bg-apple-surface { background-color: var(--dk-surface); }
+.dark .bg-apple-raised  { background-color: var(--dk-raised); }
+.dark .bg-apple-blue    { background-color: var(--dk-red); }
+.dark .bg-apple-blue-dim{ background-color: rgba(231, 76, 60, 0.15); }
+.dark .bg-apple-green   { background-color: var(--dk-jade); }
+.dark .bg-apple-orange  { background-color: var(--dk-gold); }
+.dark .bg-apple-text    { background-color: var(--dk-text); }
+
+/* ── Opacity-modified apple-raised backgrounds ─────────────────── */
+.dark .bg-apple-raised\/30  { background-color: rgb(52 73 94 / 0.30); }
+.dark .bg-apple-raised\/40  { background-color: rgb(52 73 94 / 0.40); }
+.dark .bg-apple-raised\/50  { background-color: rgb(52 73 94 / 0.50); }
+.dark .bg-apple-raised\/60  { background-color: rgb(52 73 94 / 0.60); }
+
+/* ── Opacity-modified apple-blue backgrounds ───────────────────── */
+.dark .bg-apple-blue\/\[0\.04\] { background-color: rgb(231 76 60 / 0.06); }
+.dark .bg-apple-blue\/\[0\.06\] { background-color: rgb(231 76 60 / 0.08); }
+.dark .bg-apple-blue\/\[0\.07\] { background-color: rgb(231 76 60 / 0.15); }
+.dark .bg-apple-blue\/\[0\.08\] { background-color: rgb(231 76 60 / 0.10); }
+.dark .bg-apple-blue\/\[0\.10\] { background-color: rgb(231 76 60 / 0.12); }
+.dark .bg-apple-blue\/35        { background-color: rgb(231 76 60 / 0.50); }
+.dark .bg-apple-blue\/50        { background-color: rgb(231 76 60 / 0.50); }
+
+/* ── Opacity-modified apple-orange backgrounds ─────────────────── */
+.dark .bg-apple-orange\/\[0\.07\] { background-color: rgb(232 197 71 / 0.07); }
+.dark .bg-apple-orange\/\[0\.08\] { background-color: rgb(232 197 71 / 0.08); }
+.dark .bg-apple-orange\/\[0\.10\] { background-color: rgb(232 197 71 / 0.10); }
+
+/* ── Opacity-modified apple-tertiary backgrounds ───────────────── */
+.dark .bg-apple-tertiary\/40 { background-color: rgb(149 165 166 / 0.40); }
+.dark .bg-apple-tertiary\/50 { background-color: rgb(149 165 166 / 0.50); }
+
+/* ── Hover background utilities ────────────────────────────────── */
+.dark .hover\:bg-apple-raised:hover       { background-color: var(--dk-raised); }
+.dark .hover\:bg-apple-raised\/40:hover   { background-color: rgb(52 73 94 / 0.40); }
+.dark .hover\:bg-apple-raised\/50:hover   { background-color: rgb(52 73 94 / 0.50); }
+.dark .hover\:bg-apple-raised\/60:hover   { background-color: rgb(52 73 94 / 0.60); }
+.dark .hover\:bg-apple-raised\/70:hover   { background-color: rgb(52 73 94 / 0.70); }
+.dark .hover\:bg-apple-surface:hover      { background-color: var(--dk-surface); }
+.dark .hover\:bg-apple-blue-hover:hover   { background-color: var(--dk-red-hover); }
+.dark .hover\:bg-apple-blue\/\[0\.18\]:hover { background-color: rgb(231 76 60 / 0.18); }
+
+/* ── Text colour utilities ─────────────────────────────────────── */
+.dark .text-apple-text      { color: var(--dk-text); }
+.dark .text-apple-secondary { color: var(--dk-secondary); }
+.dark .text-apple-tertiary  { color: var(--dk-tertiary); }
+.dark .text-apple-blue      { color: var(--dk-red); }
+.dark .text-apple-green     { color: var(--dk-jade); }
+.dark .text-apple-orange    { color: var(--dk-gold); }
+.dark .text-apple-surface   { color: var(--dk-surface); }
+.dark .text-apple-raised    { color: var(--dk-raised); }
+.dark .text-apple-raised\/70 { color: rgb(52 73 94 / 0.70); }
+
+/* ── Hover text utilities ──────────────────────────────────────── */
+.dark .hover\:text-apple-text:hover      { color: var(--dk-text); }
+.dark .hover\:text-apple-secondary:hover { color: var(--dk-secondary); }
+
+/* ── Group-hover text utilities ────────────────────────────────── */
+.dark .group:hover .group-hover\:text-apple-text      { color: var(--dk-text); }
+.dark .group:hover .group-hover\:text-apple-secondary { color: var(--dk-secondary); }
+
+/* ── Border colour utilities ───────────────────────────────────── */
+.dark .border-apple-blue           { border-color: var(--dk-red); }
+.dark .border-apple-blue\/20       { border-color: rgb(231 76 60 / 0.20); }
+.dark .border-apple-blue\/30       { border-color: rgb(231 76 60 / 0.30); }
+.dark .border-apple-blue\/\[0\.20\]{ border-color: rgb(231 76 60 / 0.20); }
+.dark .border-apple-orange\/\[0\.20\] { border-color: rgb(232 197 71 / 0.20); }
+
+/* ── Focus ring utilities ──────────────────────────────────────── */
+.dark .focus\:ring-apple-blue\/30:focus { --tw-ring-color: rgb(231 76 60 / 0.30); }
+.dark .focus\:ring-apple-blue\/40:focus { --tw-ring-color: rgb(231 76 60 / 0.40); }
+
+/* ── Flip border-black/* to border-white/* in dark mode ────────── */
+.dark .border-black\/\[0\.04\] { border-color: rgb(255 255 255 / 0.04); }
+.dark .border-black\/\[0\.05\] { border-color: rgb(255 255 255 / 0.05); }
+.dark .border-black\/\[0\.06\] { border-color: rgb(255 255 255 / 0.06); }
+.dark .border-black\/\[0\.07\] { border-color: rgb(255 255 255 / 0.07); }
+.dark .border-black\/\[0\.08\] { border-color: rgb(255 255 255 / 0.08); }
+.dark .border-black\/\[0\.09\] { border-color: rgb(255 255 255 / 0.09); }
+.dark .border-black\/\[0\.1\]  { border-color: rgb(255 255 255 / 0.10); }
+.dark .border-black\/\[0\.12\] { border-color: rgb(255 255 255 / 0.12); }
+
+/* ── Flip bg-black/* and hover:bg-black/* to warm amber in dark mode ─── */
+.dark .bg-black\/\[0\.05\]              { background-color: rgb(212 160 60 / 0.08); }
+.dark .hover\:bg-black\/\[0\.04\]:hover { background-color: rgb(212 160 60 / 0.05); }
+.dark .hover\:bg-black\/\[0\.05\]:hover { background-color: rgb(212 160 60 / 0.06); }
+
+/* ── bg-white/* overrides for nav bars, modals, filter pills ───── */
+.dark .bg-white     { background-color: var(--dk-surface); }
+.dark .bg-white\/70 { background-color: rgb(44 62 80 / 0.80); }
+.dark .bg-white\/80 { background-color: rgb(28 40 51 / 0.90); }
+.dark .bg-white\/88 { background-color: rgb(28 40 51 / 0.94); }
+
+/* ── Bracket connector SVG stroke ──────────────────────────────── */
+.dark { --bracket-stroke: rgba(212, 160, 60, 0.30); }
+
+/* ── Glassmorphism dark mode ────────────────────────────────────── */
+.dark .glass-card {
+  background: rgba(44, 62, 80, 0.55);
+  backdrop-filter: blur(24px) saturate(1.4);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  border-color: rgba(212, 160, 60, 0.10);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+.dark .glass-card-solid {
+  background: rgba(44, 62, 80, 0.80);
+  backdrop-filter: blur(16px) saturate(1.2);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  border-color: rgba(212, 160, 60, 0.08);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4), 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* ── Imperial card dark mode ────────────────────────────────────── */
+.dark .imperial-card {
+  background: linear-gradient(160deg, #2C3E50 0%, #34495E 50%, #2E4053 100%);
+  border-color: rgba(212, 160, 60, 0.18);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4), 0 1px 4px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04);
+}
+
+/* ── Ink card dark mode (already dark by design) ───────────────── */
+.dark .ink-card {
+  background: linear-gradient(160deg, #1E2E3E 0%, #2C3E50 40%, #243342 100%);
+  border-color: rgba(212, 160, 60, 0.15);
+}
+
+/* ── Imperial border dark mode ─────────────────────────────────── */
+.dark .imperial-border {
+  border-color: rgba(212, 160, 60, 0.18);
+  box-shadow: inset 0 0 0 1px rgba(212, 160, 60, 0.06), 0 0 12px rgba(212, 160, 60, 0.04);
+}
+
+/* ── Meander divider dark mode ─────────────────────────────────── */
+.dark .meander-divider {
+  opacity: 0.4;
+}
+
+/* ── Landscape dark mode cards ──────────────────────────────── */
+.dark .tang-card {
+  background: linear-gradient(160deg, #263545 0%, #2C3E50 40%, #2E3A48 70%, #283845 100%);
+  border-color: rgba(232, 197, 71, 0.22);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4), 0 1px 4px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05);
+}
+
+.dark .tang-lacquer {
+  background: linear-gradient(135deg, #8B2500 0%, #C0392B 35%, #E67E22 70%, #F1C40F 100%);
+  border-color: rgba(241, 196, 15, 0.25);
+  box-shadow: 0 8px 32px rgba(192,57,43,0.35), 0 2px 8px rgba(230,126,34,0.25);
+}
+
+.dark .tang-palace {
+  background: linear-gradient(160deg, #1E2E3E 0%, #2C3E50 30%, #2E4053 55%, #34495E 75%, #263545 100%);
+  border-color: rgba(232, 197, 71, 0.18);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.4), 0 1px 4px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.04);
+  color: #FAF3EB;
+}
+
+/* ── Dark mode text inside tang-palace — override light-mode fixes ── */
+.dark .tang-palace .text-white\/90 { color: rgba(250, 243, 235, 0.95); }
+.dark .tang-palace .text-white\/70 { color: rgba(250, 243, 235, 0.82); }
+.dark .tang-palace .text-white\/40 { color: rgba(250, 243, 235, 0.72); }
+.dark .tang-palace .text-white\/35 { color: rgba(250, 243, 235, 0.65); }
+.dark .tang-palace .text-white\/25 { color: rgba(250, 243, 235, 0.55); }
+.dark .tang-palace .text-white\/20 { color: rgba(250, 243, 235, 0.48); }
+.dark .tang-palace .text-white\/15 { color: rgba(250, 243, 235, 0.40); }
+.dark .tang-palace .text-cn-gold\/50 { color: rgba(232, 197, 71, 0.75); }
+.dark .tang-palace .text-cn-gold\/60 { color: rgba(232, 197, 71, 0.82); }
+.dark .tang-palace .text-cn-jade\/60 { color: rgba(127, 179, 122, 0.82); }
+
+/* ── Dark mode text inside tang-card ── */
+.dark .tang-card .text-apple-text { color: rgba(250, 243, 235, 0.95); }
+.dark .tang-card .text-apple-secondary { color: rgba(189, 195, 199, 0.90); }
+.dark .tang-card .text-apple-tertiary { color: rgba(149, 165, 166, 0.80); }
+.dark .tang-card .text-cn-gold\/50 { color: rgba(232, 197, 71, 0.75); }
+.dark .tang-card .text-cn-gold\/60 { color: rgba(232, 197, 71, 0.82); }
+.dark .tang-card .text-white\/40 { color: rgba(250, 243, 235, 0.72); }
+.dark .tang-card .text-white\/35 { color: rgba(250, 243, 235, 0.65); }
+
+/* ── Dark mode timeline lines in tang-card ── */
+.dark .tang-card .border-black\/\[0\.08\] { border-color: rgba(255,255,255,0.08); }
+
+.dark .tang-border {
+  border-color: rgba(232, 197, 71, 0.28);
+  box-shadow: inset 0 0 0 1px rgba(231,76,60,0.06), 0 0 20px rgba(232,197,71,0.10);
+}
+
+/* ── Match card hover glow in dark mode ─────────────────────────── */
+.dark .tang-card:hover {
+  box-shadow: 0 8px 32px rgba(231,76,60,0.15), 0 2px 12px rgba(232,197,71,0.12), inset 0 1px 0 rgba(255,255,255,0.06);
+  border-color: rgba(232, 197, 71, 0.32);
+}
+
+.dark .tang-divider {
+  opacity: 0.7;
+}
+
+/* ── Landscape ornaments dark mode ────────────────────────────── */
+.dark .tang-bat-bg {
+  opacity: 1;
+  background-image: url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%237FB37A' stroke-opacity='0.10' stroke-width='0.8'%3E%3Cpath d='M40 15 L35 25 M40 15 L45 25 M40 15 L40 30'/%3E%3Cpath d='M30 30 L35 25 M50 30 L45 25'/%3E%3Cpath d='M25 32 Q32 28 40 32 Q48 28 55 32'/%3E%3C/g%3E%3Cg fill='%23E8C547' fill-opacity='0.06'%3E%3Ccircle cx='40' cy='60' r='2'/%3E%3Ccircle cx='20' cy='45' r='1.5'/%3E%3Ccircle cx='60' cy='45' r='1.5'/%3E%3C/g%3E%3C/svg%3E");
+}
+.dark .tang-bat-cluster::after { opacity: 0.18; }
+.dark .tang-dragon::before { opacity: 0.20; }
+.dark .tang-phoenix::before { opacity: 0.18; }
+.dark .tang-qilin-mark::after { opacity: 0.16; }
+
+/* ── Landscape nav dark mode — ink-wash + amber ─────────── */
+.dark header[style*="FAF3EB"] {
+  background: linear-gradient(180deg, rgba(28,40,51,0.96) 0%, rgba(44,62,80,0.94) 100%) !important;
+}
