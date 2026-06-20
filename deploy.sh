@@ -2,31 +2,29 @@
 # ──────────────────────────────────────────────────────────────────
 #  WC2026 — Deploy to Alibaba Cloud ECS via rsync + Docker Compose
 #  Usage:
-#    bash deploy.sh                          # deploy (HTTP only if no DOMAIN)
-#    DOMAIN=example.com bash deploy.sh       # deploy with HTTPS
+#    ECS_IP=43.98.192.47 bash deploy.sh
+#
+#  HTTPS is always enabled (qwen.wc2026ai.com). Override with:
+#    DOMAIN=other.com ECS_IP=... bash deploy.sh
 #
 #  Required env vars (or edit defaults below):
 #    ECS_IP    — ECS public IP address
 #    ECS_USER  — SSH user (default: root)
 #    ECS_KEY   — Path to SSH private key (default: ~/.ssh/aliyun-ecs.pem)
-#
-#  Optional env vars:
-#    DOMAIN    — Domain name for HTTPS (e.g. wc2026.example.com)
-#    CERT_EMAIL — Email for Let's Encrypt (default: admin@$DOMAIN)
 # ──────────────────────────────────────────────────────────────────
 
 set -e
 
-ECS_IP="${ECS_IP:-your-ecs-public-ip}"
+ECS_IP="${ECS_IP:-43.98.192.47}"
 ECS_USER="${ECS_USER:-root}"
 ECS_KEY="${ECS_KEY:-$HOME/.ssh/aliyun-ecs.pem}"
 REMOTE_DIR="/opt/wc2026"
 
-if [ "$ECS_IP" = "your-ecs-public-ip" ]; then
-  echo "❌  Set ECS_IP before deploying:"
-  echo "    ECS_IP=1.2.3.4 bash deploy.sh"
-  exit 1
-fi
+# HTTPS defaults — always enabled unless explicitly disabled
+DOMAIN="${DOMAIN:-qwen.wc2026ai.com}"
+CERT_EMAIL="${CERT_EMAIL:-cheesiong@gmail.com}"
+
+echo "🔐 HTTPS: $DOMAIN"
 
 echo ""
 echo "⚽  WC2026 — Deploying to Alibaba Cloud ECS ($ECS_IP)..."
