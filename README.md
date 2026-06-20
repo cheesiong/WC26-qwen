@@ -13,6 +13,7 @@ A World Cup 2026 prediction app powered by Alibaba Cloud's Qwen models. Covers a
 - **Team profiles** — per-team page with group context, full match history, ELO rating trajectory
 - **About** — site purpose, AI-generated content disclaimer, no-gambling notice, and author profile
 - **Dark/light theme** — persistent theme toggle stored in `localStorage`
+- **i18n** — English/中文 language toggle
 
 ## Prediction Engine
 
@@ -70,13 +71,14 @@ Without a DashScope key the prediction engine falls back to template-generated i
 ```
 wc26-qwen/
 ├── start.sh                        # One-command dev startup
-├── deploy.sh                       # Deploy to Alibaba Cloud ECS
+├── deploy.sh                       # Rsync + Docker rebuild to ECS
+├── setup-ecs.sh                    # Automated ECS provisioning (VPC, SG, instance)
 ├── docker-compose.yml              # Docker setup for containerised deployment
 ├── backend/
-│   ├── server.js                   # Express API (all routes)
+│   ├── server.js                   # Express API (all routes + cron jobs)
 │   ├── data/teams.js               # 48 teams, groups, fixtures, stats
 │   ├── database/
-│   │   ├── db.js                   # SQLite schema + connection
+│   │   ├── db.js                   # SQLite schema + connection (WAL mode)
 │   │   └── seed.js                 # Seeds teams and group fixtures
 │   └── services/
 │       ├── predictionEngine.js     # Dixon-Coles backbone + log-pool blending
@@ -99,13 +101,27 @@ wc26-qwen/
 │       └── suspensionService.js    # Yellow/red card suspension tracker
 └── frontend/
     └── src/
-        ├── App.jsx                 # Router + nav
+        ├── App.jsx                 # Router + nav + bottom tab bar
         ├── api/client.js           # All API calls
-        ├── contexts/ThemeContext.jsx
-        ├── pages/                  # Dashboard, Matches, MatchDetail, Schedule,
-        │                           # Groups, Tournament, TeamDetail,
-        │                           # Predictions, About
-        └── components/             # MatchCard, PredictionBar, GroupTable, FlagImage
+        ├── contexts/
+        │   ├── ThemeContext.jsx    # Dark/light theme
+        │   └── LanguageContext.jsx # EN/中文 language toggle
+        ├── i18n/translations.js    # Translation strings
+        ├── pages/
+        │   ├── Dashboard.jsx       # Home — hero + today's matches + top teams
+        │   ├── Schedule.jsx        # Fixtures — all 104 matches, date/stage filters
+        │   ├── MatchDetail.jsx     # Full prediction breakdown per match
+        │   ├── Groups.jsx          # Group standings + what-if calculator
+        │   ├── Tournament.jsx      # Knockout bracket + Monte Carlo winner
+        │   ├── Predictions.jsx     # All predictions vs actuals + accuracy stats
+        │   └── TeamDetail.jsx      # Per-team profile + ELO trajectory
+        └── components/
+            ├── MatchCard.jsx       # Match summary card
+            ├── PredictionBar.jsx   # Win/draw/loss probability bar
+            ├── GroupTable.jsx      # Group standings table
+            ├── FlagImage.jsx       # Team flag SVG loader
+            ├── SEO.jsx             # Per-page meta tags
+            └── TangOrnaments.jsx   # Chinese decorative watermarks (dragon, phoenix, etc.)
 ```
 
 ## Testing
@@ -132,9 +148,31 @@ npm run format    # auto-fix
 
 Target: **Alibaba Cloud ECS** with Docker Compose.
 
+### Automated (recommended)
+
 ```bash
-# On ECS instance:
+# First-time: provision ECS instance + install Docker + deploy app
+aliyun configure   # set up AccessKey ID + Secret
+bash setup-ecs.sh  # creates VPC, security group, instance, deploys app
+
+# Subsequent deploys: sync code + rebuild containers
+ECS_IP=<your-ip> ECS_KEY=~/.ssh/aliyun-ecs.pem bash deploy.sh
+```
+
+### With HTTPS (Let's Encrypt)
+
+```bash
+ECS_IP=<your-ip> ECS_KEY=~/.ssh/aliyun-ecs.pem DOMAIN=yourdomain.com CERT_EMAIL=you@example.com bash deploy.sh
+```
+
+### Manual (on ECS instance)
+
+```bash
+git clone <your-repo>
+cd wc26-qwen
+cp backend/.env.example backend/.env
+# Edit backend/.env with your keys
 docker compose up -d
 ```
 
-Set environment variables via `backend/.env` or as ECS instance environment variables. See `docker-compose.yml` for the service definitions.
+Set environment variables via `backend/.env`. See `docker-compose.yml` for service definitions.

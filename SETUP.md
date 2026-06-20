@@ -123,8 +123,26 @@ Dixon-Coles bivariate Poisson backbone blended with H2H, form, intel, lineup, an
 
 ## Deploy to Alibaba Cloud ECS
 
+### Automated (recommended)
+
 ```bash
-# On ECS instance — SSH in and run:
+# First-time: provision ECS instance + install Docker + deploy app
+aliyun configure   # set up AccessKey ID + Secret
+bash setup-ecs.sh  # creates VPC, security group, instance, deploys app
+
+# Subsequent deploys: sync code + rebuild containers
+ECS_IP=<your-ip> ECS_KEY=~/.ssh/aliyun-ecs.pem bash deploy.sh
+```
+
+### With HTTPS (Let's Encrypt)
+
+```bash
+ECS_IP=<your-ip> ECS_KEY=~/.ssh/aliyun-ecs.pem DOMAIN=yourdomain.com CERT_EMAIL=you@example.com bash deploy.sh
+```
+
+### Manual (on ECS instance)
+
+```bash
 git clone <your-repo>
 cd wc26-qwen
 cp backend/.env.example backend/.env
@@ -133,11 +151,10 @@ docker compose up -d
 ```
 
 **Required ECS setup:**
-- Install Docker + Docker Compose
-- Open Security Group ports: 80 (HTTP), 443 (HTTPS), 22 (SSH)
-- Mount an ESSD cloud disk at `/data` for SQLite persistence
-- Point `DB_PATH` in `.env` to `/data/worldcup2026.db`
-- Get a DashScope API key from the Alibaba Cloud console
+- Docker + Docker Compose (auto-installed by `setup-ecs.sh`)
+- Security Group ports: 80 (HTTP), 443 (HTTPS), 22 (SSH)
+- `DB_PATH` in `.env` to `/data/worldcup2026.db` (Docker volume)
+- DashScope API key from the Alibaba Cloud console
 
 The `docker-compose.yml` builds both the Node.js backend and the nginx frontend container and wires them together automatically.
 
@@ -148,15 +165,17 @@ The `docker-compose.yml` builds both the Node.js backend and the nginx frontend 
 ```
 wc26-qwen/
 ├── start.sh                        ← Run this to start everything locally
+├── deploy.sh                       ← Rsync + Docker rebuild to ECS
+├── setup-ecs.sh                    ← Automated ECS provisioning
 ├── docker-compose.yml              ← Docker deployment (Alibaba Cloud ECS)
 │
 ├── backend/
-│   ├── server.js                   ← Express API (all routes)
+│   ├── server.js                   ← Express API (all routes + cron jobs)
 │   ├── .env.example                ← Copy to .env and add keys
 │   ├── data/
 │   │   └── teams.js                ← All 48 teams, groups, stats
 │   ├── database/
-│   │   ├── db.js                   ← SQLite schema + connection
+│   │   ├── db.js                   ← SQLite schema + connection (WAL mode)
 │   │   └── seed.js                 ← Seeds teams + group fixtures
 │   └── services/
 │       ├── predictionEngine.js     ← DC backbone + log-pool blending
@@ -180,24 +199,25 @@ wc26-qwen/
 │
 └── frontend/
     └── src/
-        ├── App.jsx                 ← Router + nav
+        ├── App.jsx                 ← Router + nav + bottom tab bar
         ├── api/client.js           ← All API calls
         ├── contexts/
         │   ├── ThemeContext.jsx    ← Dark/light theme
         │   └── LanguageContext.jsx ← EN/中文 language toggle
+        ├── i18n/translations.js    ← Translation strings
         ├── pages/
-        │   ├── Dashboard.jsx
-        │   ├── Matches.jsx
-        │   ├── MatchDetail.jsx
-        │   ├── Schedule.jsx
-        │   ├── Groups.jsx
-        │   ├── Tournament.jsx
-        │   ├── Predictions.jsx
-        │   ├── TeamDetail.jsx
-        │   └── About.jsx
+        │   ├── Dashboard.jsx       ← Home — hero + today's matches + top teams
+        │   ├── Schedule.jsx        ← Fixtures — all 104 matches, filters
+        │   ├── MatchDetail.jsx     ← Full prediction breakdown per match
+        │   ├── Groups.jsx          ← Group standings + what-if calculator
+        │   ├── Tournament.jsx      ← Knockout bracket + Monte Carlo winner
+        │   ├── Predictions.jsx     ← All predictions vs actuals + accuracy stats
+        │   └── TeamDetail.jsx      ← Per-team profile + ELO trajectory
         └── components/
-            ├── MatchCard.jsx
-            ├── PredictionBar.jsx
-            ├── GroupTable.jsx
-            └── FlagImage.jsx
+            ├── MatchCard.jsx       ← Match summary card
+            ├── PredictionBar.jsx   ← Win/draw/loss probability bar
+            ├── GroupTable.jsx      ← Group standings table
+            ├── FlagImage.jsx       ← Team flag SVG loader
+            ├── SEO.jsx             ← Per-page meta tags
+            └── TangOrnaments.jsx   ← Chinese decorative watermarks
 ```
