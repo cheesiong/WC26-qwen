@@ -243,7 +243,7 @@ function RoadToFinal() {
             <div className="text-[10px] font-bold uppercase tracking-[0.15em] text-white/50">
               {t('tournament.predicted')} {t('tournament.champion')}
             </div>
-            <Link to={`/teams/${predictedWinner.id}`} className="text-[18px] font-extrabold text-white hover:text-cn-gold transition-colors">
+            <Link to={`/teams/${predictedWinner.id}`} className="text-[18px] font-extrabold text-apple-text hover:text-cn-gold transition-colors">
               {teamName(predictedWinner.id, predictedWinner.name)}
             </Link>
           </div>
