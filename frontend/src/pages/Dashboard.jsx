@@ -364,12 +364,12 @@ export default function Dashboard() {
             style={{ background: 'linear-gradient(90deg, #2ECC71, #27AE60, #3498DB)' }} />
           <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-cn-jade/60 mb-2 font-serif">{t('dashboard.accuracy')}</p>
           {accuracy?.stats?.total > 0 ? (
-            <div className="flex items-end gap-4">
+            <div className="flex flex-wrap items-end gap-x-4 gap-y-2">
               <div>
                 <p className="text-[26px] font-black tracking-[-0.04em] leading-none text-white/90 font-serif">{accuracy.stats.accuracy_pct}%</p>
                 <p className="text-[9px] font-medium text-white/35 uppercase tracking-wider mt-0.5 font-serif">{t('dashboard.points')}</p>
               </div>
-              <div className="w-px self-stretch" style={{ background: 'rgba(212,160,60,0.12)' }} />
+              <div className="w-px self-stretch hidden sm:block" style={{ background: 'rgba(212,160,60,0.12)' }} />
               <div>
                 <p className="text-[26px] font-black tracking-[-0.04em] leading-none text-white/90 font-serif">{accuracy.stats.outcome_accuracy_pct ?? '–'}%</p>
                 <p className="text-[9px] font-medium text-white/35 uppercase tracking-wider mt-0.5 font-serif">{t('dashboard.outcome')}</p>
