@@ -287,7 +287,7 @@ function FormationDisplay({ starters, formation, teamName, flag, keyAbsenceNames
                     </div>
                     <div className="text-center leading-tight">
                       <div className={`text-xs font-medium truncate w-14 text-center
-                        ${isAbsent ? 'text-red-400' : 'text-gray-200'}`}>
+                        ${isAbsent ? 'text-red-400' : 'text-apple-text'}`}>
                         {player?.name?.split(' ').pop() || pos}
                       </div>
                       <div className="text-apple-tertiary" style={{ fontSize: '10px' }}>{pos}</div>
