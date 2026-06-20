@@ -399,11 +399,14 @@
 
 /* Fix white/opacity text classes inside tang-palace in light mode */
 .tang-palace .text-white\/90 { color: rgba(28, 40, 51, 0.92); }
+.tang-palace .text-white\/70 { color: rgba(44, 62, 80, 0.70); }
+.tang-palace .text-white\/50 { color: rgba(44, 62, 80, 0.55); }
 .tang-palace .text-white\/40 { color: rgba(44, 62, 80, 0.55); }
 .tang-palace .text-white\/35 { color: rgba(44, 62, 80, 0.50); }
-.tang-palace .text-white\/70 { color: rgba(44, 62, 80, 0.70); }
 .tang-palace .text-white\/20 { color: rgba(44, 62, 80, 0.25); }
 .tang-palace .text-white\/15 { color: rgba(44, 62, 80, 0.20); }
+.tang-palace .text-white { color: #1C2833; }
+.tang-palace a.text-white:hover { color: #C0392B; }
 .tang-palace .text-cn-gold\/50 { color: rgba(138, 112, 32, 0.70); }
 .tang-palace .text-cn-gold\/60 { color: rgba(138, 112, 32, 0.80); }
 .tang-palace .text-cn-jade\/60 { color: rgba(74, 124, 89, 0.80); }
