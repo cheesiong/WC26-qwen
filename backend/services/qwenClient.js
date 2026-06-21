@@ -12,7 +12,7 @@
 
 const axios = require('axios');
 
-const DASHSCOPE_BASE_URL = 'https://dashscope.aliyuncs.com/compatible-mode/v1';
+const DASHSCOPE_BASE_URL = process.env.DASHSCOPE_BASE_URL || 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1';
 
 const QWEN_MODELS = {
   MAX:   'qwen-max',
