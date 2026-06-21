@@ -1,6 +1,6 @@
-# WC2026 Predictor
+# WC2026 by Qwen
 
-A World Cup 2026 prediction app powered by Alibaba Cloud's Qwen models. Covers all 48 teams, 72 group stage fixtures, and the knockout bracket through to the final.
+A World Cup 2026 prediction app powered by Alibaba Cloud's Qwen multi-agent AI system. Covers all 48 teams, 72 group stage fixtures, and the knockout bracket through to the final.
 
 ## Features
 
@@ -15,9 +15,93 @@ A World Cup 2026 prediction app powered by Alibaba Cloud's Qwen models. Covers a
 - **Dark/light theme** — persistent theme toggle stored in `localStorage`
 - **i18n** — English/中文 language toggle
 
-## Prediction Engine
+## Multi-Agent Prediction System
 
-A multi-agent system running on Alibaba Cloud's Qwen models. Each prediction dispatches 5 specialist agents in parallel — Statistical (Dixon-Coles backbone), H2H, Form, Intelligence, and Lineup — and an Orchestrator that detects conflicts between agents, runs a negotiation round when they disagree, and synthesises the final probability via log-pool blending.
+The prediction engine is a **5-agent AI system** that runs on Alibaba Cloud's Qwen models. When `USE_MULTI_AGENT=true`, each match prediction dispatches 5 specialist LLM agents in parallel, coordinated by an Orchestrator that handles conflict detection and negotiation.
+
+### Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                      ORCHESTRATOR AGENT                          │
+│  1. Build match context from precomputed backbone               │
+│  2. Pre-fetch domain data (H2H, form, intel, lineup)            │
+│  3. Dispatch agents in parallel (Round 1)                       │
+│  4. Detect conflicts (Δ ≥ 20% triggers negotiation)             │
+│  5. Run rebuttal round where agents disagree (Round 2)          │
+│  6. Blend probabilities via log-pool + temperature scaling      │
+│  7. Generate final insight (qwen-plus)                          │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+        ┌─────────────────────┼─────────────────────┐
+        │                     │                     │
+        ▼                     ▼                     ▼
+┌───────────────┐   ┌───────────────┐   ┌───────────────┐
+│ Statistical   │   │    Form       │   │    Intel      │
+│    Agent      │   │    Agent      │   │    Agent      │
+│  (qwen-plus)  │   │  (qwen-turbo) │   │  (qwen-plus)  │
+│               │   │               │   │               │
+│ Dixon-Coles   │   │ Last 10 match │   │ Injuries,     │
+│ backbone:     │   │ results with  │   │ motivation,   │
+│ λ values,     │   │ competition   │   │ rotation      │
+│ ELO ratings,  │   │ weighting     │   │ (web scraping)│
+│ α/β params    │   │               │   │               │
+└───────────────┘   └───────────────┘   └───────────────┘
+
+        ┌─────────────────────┐   ┌─────────────────────┐
+        │      H2H Agent      │   │    Lineup Agent     │
+        │    (qwen-turbo)     │   │    (qwen-plus)      │
+        │                     │   │                     │
+        │ Head-to-head record │   │ Confirmed starting  │
+        │ (47k match dataset) │   │ XI (~60min before   │
+        │ Skips if <2 meets   │   │ kickoff)            │
+        │                     │   │ Skips if no data    │
+        └─────────────────────┘   └─────────────────────┘
+```
+
+### Specialist Agents
+
+| Agent | Model | Data Source | Role |
+|-------|-------|-------------|------|
+| **Statistical** | `qwen-plus` | Dixon-Coles backbone output | Interprets λ values, ELO gaps, α/β attack/defence ratings. Does NOT rerun Poisson math — translates precomputed numbers into natural language with statistical reasoning. |
+| **Form** | `qwen-turbo` | football-data.org API | Evaluates last 10 matches per team with competition weighting (WC finals > qualifiers > Nations League > friendlies). |
+| **H2H** | `qwen-turbo` | 47k international match dataset | Interprets competition-weighted head-to-head history. Auto-skips when fewer than 2 meetings exist. |
+| **Intel** | `qwen-plus` | Google News RSS + Qwen extraction | Interprets injuries, suspensions, squad rotation, motivation. Calibrated: 1 key injury = ~3-5% shift, 2+ = ~8-12%. |
+| **Lineup** | `qwen-plus` | Lineup service | Analyzes confirmed starting XI strength scores and formation matchups. Activates ~60-75 min before kickoff; skips otherwise. |
+
+### Negotiation Protocol
+
+When agents disagree (probability delta ≥ 20%), a two-round negotiation occurs:
+
+1. **Round 1** — All agents run simultaneously, producing structured JSON: `{probability, confidence, evidence, weightRecommendation, flags}`
+
+2. **Conflict Detection** — Pairwise probability deltas checked. If any outcome differs by ≥ 20%, that pair enters negotiation.
+
+3. **Round 2 (Rebuttal)** — Conflicting agents receive each other's arguments and produce a rebuttal. The agent that moves less "wins."
+
+4. **Weight Adjustment**:
+   - Winner: 1.3× weight boost
+   - Loser: weight cut to 0.6×
+   - This penalizes overconfident agents who can't defend their position
+
+5. **Final Blend** — Log-pool (geometric mean) of all agent probabilities, weighted by adjusted weights + confidence scores.
+
+### Output
+
+Each prediction stores:
+- **`agent_session_id`** — UUID tracking the full negotiation session
+- **`methodology`** — Agent weights used (e.g., `StatisticalAgent(37%) + FormAgent(30%) + IntelAgent(34%)`)
+- **`insight`** — Rich LLM-generated analyst commentary referencing specific data points
+
+Example insight:
+> "Colombia's 43% win probability isn't just noise — it reflects their sharper attack (α=1.806 vs Portugal's 1.698), recent 3-1 win over Uzbekistan, and the statistical model's scepticism about Portugal's ELO advantage translating to open-play dominance."
+
+### Single-Model Fallback
+
+When `USE_MULTI_AGENT=false`, the engine uses:
+- Pure Dixon-Coles Poisson model with ELO ratings
+- Form/intel signals computed in code (no LLM calls)
+- Faster (~1-2s per match) but less nuanced insights
 
 ## Tech Stack
 
