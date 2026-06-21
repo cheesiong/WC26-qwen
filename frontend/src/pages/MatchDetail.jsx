@@ -936,7 +936,7 @@ export default function MatchDetail() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <span className="text-[13px] font-semibold text-apple-text block truncate">{factor.name}</span>
-                          <span className="text-[10px] text-apple-tertiary">{(factor.weight * 100).toFixed(0)}% {t('matchDetail.weightLabel')}</span>
+                          <span className="text-[10px] text-apple-tertiary">{factor.weight.toFixed(0)}% {t('matchDetail.weightLabel')}</span>
                         </div>
                         <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold shrink-0 ${
                           factor.favors === 'HOME' ? 'bg-cn-red/[0.10] text-cn-red' :
