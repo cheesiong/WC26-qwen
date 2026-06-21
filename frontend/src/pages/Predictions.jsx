@@ -284,7 +284,7 @@ export default function Predictions() {
   const [loading, setLoading] = useState(true);
 
   // Filters
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('SCHEDULED');
   const [groupFilter, setGroupFilter] = useState('all');
 
   useEffect(() => {
@@ -426,7 +426,7 @@ export default function Predictions() {
           <span className="text-[10px] font-bold text-apple-tertiary uppercase tracking-wider mr-1">
             {t('predictions.predict')}
           </span>
-          {['all', 'SCHEDULED', 'COMPLETED'].map(s => (
+          {['all', 'SCHEDULED', 'LIVE', 'COMPLETED'].map(s => (
             <button
               key={s}
               onClick={() => setStatusFilter(s === 'all' ? 'all' : s)}
@@ -436,7 +436,7 @@ export default function Predictions() {
                   : 'bg-apple-raised/60 text-apple-secondary hover:bg-cn-gold/10'
                 }`}
             >
-              {s === 'all' ? t('predictions.all') : s === 'SCHEDULED' ? t('predictions.upcoming') : t('predictions.completed')}
+              {s === 'all' ? t('predictions.all') : s === 'SCHEDULED' ? t('predictions.upcoming') : s === 'LIVE' ? t('predictions.live') : t('predictions.completed')}
             </button>
           ))}
         </div>
