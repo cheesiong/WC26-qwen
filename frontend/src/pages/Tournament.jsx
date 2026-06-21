@@ -385,7 +385,7 @@ export default function Tournament() {
   return (
     <div className="space-y-6">
       <SEO
-        title="Knockout Bracket & Winner Odds — World Cup 2026 | WC2026 Predictor"
+        title="Knockout Bracket & Winner Odds — World Cup 2026 | WC2026 by Qwen"
         description="FIFA World Cup 2026 knockout bracket with AI-predicted winners from the Round of 32 to the Final. See each team's probability of winning the tournament."
         path="/tournament"
       />

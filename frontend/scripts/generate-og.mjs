@@ -47,7 +47,7 @@ const svg = `
   <!-- Subtitle -->
   <text x="100" y="320" font-family="system-ui, -apple-system, Arial, sans-serif"
         font-size="40" font-weight="400" fill="white" fill-opacity="0.75" letter-spacing="-0.5">
-    AI Match Predictor
+    AI Match Predictor by Qwen
   </text>
 
   <!-- Description line -->

@@ -77,7 +77,7 @@ function SealLogo({ size = 'md' }) {
           2026
         </span>
         <span className="text-[8px] font-bold tracking-[0.14em] text-cn-gold/60 mt-[3px] font-serif uppercase">
-          Predictor
+          by Qwen
         </span>
       </div>
     </div>

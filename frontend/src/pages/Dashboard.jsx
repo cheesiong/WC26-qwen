@@ -165,7 +165,7 @@ export default function Dashboard() {
   return (
     <div className="space-y-5">
       <SEO
-        title="World Cup 2026 Predictions & Standings | WC2026 Predictor"
+        title="World Cup 2026 Predictions & Standings | WC2026 by Qwen"
         description="AI-powered FIFA World Cup 2026 match predictions. ELO ratings, Poisson model, head-to-head history and live web intelligence — updated daily for all 104 matches."
         path="/"
         jsonLd={{

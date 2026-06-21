@@ -41,7 +41,7 @@ export default function Groups() {
   return (
     <div className="space-y-6">
       <SEO
-        title="Group Standings — World Cup 2026 | WC2026 Predictor"
+        title="Group Standings — World Cup 2026 | WC2026 by Qwen"
         description="Live FIFA World Cup 2026 group standings for all 12 groups (A–L). See points tables, qualification probabilities, and what-if scenarios for all 48 teams."
         path="/groups"
       />

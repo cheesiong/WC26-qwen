@@ -1,6 +1,6 @@
 import { Helmet } from 'react-helmet-async';
 
-const SITE_NAME = 'WC2026 Predictor';
+const SITE_NAME = 'WC2026 by Qwen';
 const SITE_URL = (import.meta.env.VITE_SITE_URL || '').replace(/\/$/, '');
 const GSC_TOKEN = import.meta.env.VITE_GSC_VERIFICATION || '';
 const DEFAULT_DESC =

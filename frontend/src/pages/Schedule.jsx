@@ -221,7 +221,7 @@ export default function Schedule() {
   return (
     <div className="space-y-5">
       <SEO
-        title="Full Match Schedule — World Cup 2026 | WC2026 Predictor"
+        title="Full Match Schedule — World Cup 2026 | WC2026 by Qwen"
         description="Complete FIFA World Cup 2026 schedule — all 104 matches from the Group Stage to the Final, with kickoff times in Singapore Time (SGT) and AI predictions for every game."
         path="/schedule"
       />

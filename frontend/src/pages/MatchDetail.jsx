@@ -770,7 +770,7 @@ export default function MatchDetail() {
   const stageLabel = match.group_code ? `${t('dashboard.group')} ${match.group_code}` : (t(`stage.${match.stage}`) || match.stage);
   const metaTitle = match.home_name && match.away_name
     ? `${match.home_name} vs ${match.away_name} Prediction — World Cup 2026 ${stageLabel} | WC2026`
-    : 'Match Prediction — World Cup 2026 | WC2026 Predictor';
+    : 'Match Prediction — World Cup 2026 | WC2026 by Qwen';
   const metaDesc = (() => {
     if (!match.home_name || !match.away_name) return 'World Cup 2026 match prediction.';
     if (isCompleted) {
