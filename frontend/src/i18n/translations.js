@@ -313,10 +313,10 @@ export const translations = {
     },
     stage: {
       GROUP: '小组赛', R32: '32强', R16: '16强',
-      QF: '四分之一决赛', SF: '半决赛', F: '决赛', THIRD_PLACE: '三四名决赛',
+      QF: '8强', SF: '半决赛', F: '决赛', THIRD_PLACE: '三四名决赛',
     },
     stageShort: {
-      GROUP: '小组', R32: '32强', R16: '16强', QF: '四强', SF: '半决', F: '决赛', THIRD_PLACE: '季军赛',
+      GROUP: '小组', R32: '32强', R16: '16强', QF: '8强', SF: '半决', F: '决赛', THIRD_PLACE: '季军赛',
     },
     status: { SCHEDULED: '待赛', LIVE: '直播中', COMPLETED: '赛事结束' },
     confidence: { VERY_HIGH: '极高', HIGH: '高', MEDIUM: '中等', LOW: '低' },
@@ -346,7 +346,7 @@ export const translations = {
       groupStage: '小组赛',
       roundOf32: '32强',
       roundOf16: '16强',
-      quarterFinals: '四分之一决赛',
+      quarterFinals: '8强',
       semiFinals: '半决赛',
       final: '决赛',
       thirdPlace: '三四名决赛',
