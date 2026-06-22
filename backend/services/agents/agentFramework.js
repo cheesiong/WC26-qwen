@@ -54,12 +54,34 @@ The three probability values must sum to 1.0.`;
 
 // ── JSON extraction ───────────────────────────────────────────────
 function extractJSON(text) {
-  // 1. Try ```json ... ``` code fence
-  const fence = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (!text || typeof text !== 'string') return null;
+
+  // 1. Try ```json ... ``` code fence (non-greedy)
+  const fence = text.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
   if (fence) {
     try { return JSON.parse(fence[1].trim()); } catch {}
   }
-  // 2. Try first bare { ... } object
+  // 2. Try first bare { ... } object (find opening { and match to its closing })
+  const openIdx = text.indexOf('{');
+  if (openIdx !== -1) {
+    let depth = 0;
+    let inString = false;
+    let escape = false;
+    for (let i = openIdx; i < text.length; i++) {
+      const ch = text[i];
+      if (escape) { escape = false; continue; }
+      if (ch === '\\') { escape = true; continue; }
+      if (ch === '"') { inString = !inString; continue; }
+      if (inString) continue;
+      if (ch === '{') depth++;
+      if (ch === '}') depth--;
+      if (depth === 0) {
+        try { return JSON.parse(text.slice(openIdx, i + 1)); } catch {}
+        break;
+      }
+    }
+  }
+  // 3. Last resort: regex-based greedy match
   const bare = text.match(/\{[\s\S]*\}/);
   if (bare) {
     try { return JSON.parse(bare[0]); } catch {}

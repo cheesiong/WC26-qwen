@@ -454,6 +454,10 @@ function AgentProbBar({ p, homeName, awayName }) {
 
 function AgentSessionViewer({ matchId, homeName, awayName }) {
   const t = useT();
+  const agName = (name) => {
+    const translated = t('matchDetail.agentNames.' + name);
+    return translated !== 'matchDetail.agentNames.' + name ? translated : name;
+  };
   const [session, setSession] = useState(null);
   const [open, setOpen]       = useState(false);
   const [loading, setLoading] = useState(false);
@@ -519,7 +523,7 @@ function AgentSessionViewer({ matchId, homeName, awayName }) {
                       : 'border-black/[0.07] bg-apple-raised/30'}`}
                   >
                     <div className="flex items-center gap-2 mb-2 flex-wrap">
-                      <span className="text-xs font-bold text-apple-text">{msg.agent}</span>
+                      <span className="text-xs font-bold text-apple-text">{agName(msg.agent)}</span>
                       <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${MODEL_BADGE[msg.model] ?? 'bg-apple-raised text-apple-secondary'}`}>
                         {msg.model}
                       </span>
@@ -539,7 +543,7 @@ function AgentSessionViewer({ matchId, homeName, awayName }) {
                       <ul className="mt-2 space-y-0.5">
                         {msg.evidence.slice(0, 3).map((e, i) => (
                           <li key={i} className="text-[11px] text-apple-secondary flex gap-1.5">
-                            <span className="text-apple-tertiary shrink-0">·</span> {e}
+                            <span className="text-apple-tertiary shrink-0">·</span> {e === 'JSON parse error — uniform prior applied' ? t('matchDetail.parseError') : e}
                           </li>
                         ))}
                       </ul>
@@ -563,13 +567,13 @@ function AgentSessionViewer({ matchId, homeName, awayName }) {
                   return (
                     <div key={i} className="rounded-xl border border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-900/10 p-3 space-y-3">
                       <div className="text-xs font-semibold text-orange-700 dark:text-orange-400">
-                        ⚡ {c.agent_a} vs {c.agent_b} — gap {Math.round(c.delta * 100)}%
+                        ⚡ {agName(c.agent_a)} vs {agName(c.agent_b)} — gap {Math.round(c.delta * 100)}%
                       </div>
 
                       {[rebA, rebB].filter(Boolean).map(msg => (
                         <div key={msg.id} className="pl-3 border-l-2 border-orange-300 dark:border-orange-700">
                           <div className="flex items-center gap-2 mb-1.5">
-                            <span className="text-[11px] font-bold text-apple-text">{msg.agent}</span>
+                            <span className="text-[11px] font-bold text-apple-text">{agName(msg.agent)}</span>
                             <span className="text-[10px] text-apple-tertiary">{t('matchDetail.revised')}</span>
                             {c.winner === msg.agent
                               ? <span className="text-[10px] font-bold text-green-600 bg-green-100 dark:bg-green-900/40 px-1.5 py-0.5 rounded ml-auto">✓ {t('matchDetail.heldPosition')}</span>
@@ -595,7 +599,7 @@ function AgentSessionViewer({ matchId, homeName, awayName }) {
           {/* Footer */}
           <div className="flex items-center justify-between text-[10px] text-apple-tertiary border-t border-black/[0.07] pt-3">
             <span>{t('matchDetail.synthesis')}: {meta.synthesis_method}</span>
-            <span>{meta.agents_used?.join(' + ')}</span>
+            <span>{meta.agents_used?.map(a => agName(a)).join(' + ')}</span>
           </div>
         </div>
       )}
@@ -936,7 +940,7 @@ export default function MatchDetail() {
                           <FactorIcon size={16} className="text-cn-red" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <span className="text-[13px] font-semibold text-apple-text block truncate">{t('matchDetail.factorNames.' + factor.name) !== 'matchDetail.factorNames.' + factor.name ? t('matchDetail.factorNames.' + factor.name) : factor.name}</span>
+                          <span className="text-[13px] font-semibold text-apple-text block truncate">{(() => { const fn = t('matchDetail.factorNames.' + factor.name); if (fn !== 'matchDetail.factorNames.' + factor.name) return fn; const an = t('matchDetail.agentNames.' + factor.name); if (an !== 'matchDetail.agentNames.' + factor.name) return an; return factor.name; })()}</span>
                           <span className="text-[10px] text-apple-tertiary">{factor.weight.toFixed(0)}% {t('matchDetail.weightLabel')}</span>
                         </div>
                         <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold shrink-0 ${
@@ -966,7 +970,7 @@ export default function MatchDetail() {
               {prediction.methodology && (
                 <div className="border-t border-cn-gold/10 mt-4 pt-3">
                   <div className="text-xs text-apple-tertiary">
-                    📐 {t('matchDetail.methodology')}: {prediction.methodology.replace(/BACKBONE|H2H/g, m => t('matchDetail.methodLabels.' + m) !== 'matchDetail.methodLabels.' + m ? t('matchDetail.methodLabels.' + m) : m)}
+                    📐 {t('matchDetail.methodology')}: {prediction.methodology.replace(/BACKBONE|H2H|StatisticalAgent|H2HAgent|FormAgent|IntelAgent|LineupAgent/g, m => { const ml = t('matchDetail.methodLabels.' + m); if (ml !== 'matchDetail.methodLabels.' + m) return ml; const an = t('matchDetail.agentNames.' + m); if (an !== 'matchDetail.agentNames.' + m) return an; return m; })}
                   </div>
                 </div>
               )}
