@@ -46,11 +46,11 @@ Respond ONLY with a valid JSON object — no extra text, no markdown — in this
     "winAway": <0-1 float>
   },
   "confidence":         <0-1 float — how certain you are of your estimate>,
-  "evidence":           [<string>, ...],  // 2-5 bullet-point reasons
+  "evidence":           [<string>, ...],  // 2-4 concise bullet points (max 80 chars each)
   "weightRecommendation": <0-1 float — suggested weight for this signal in the final blend>,
   "flags":              [<string>, ...]   // optional tags, e.g. "HOME_IN_FORM", "KEY_INJURY_AWAY"
 }
-The three probability values must sum to 1.0.`;
+The three probability values must sum to 1.0. Keep each evidence bullet under 80 characters — be concise.`;
 
 // ── JSON extraction ───────────────────────────────────────────────
 function extractJSON(text) {
@@ -230,7 +230,7 @@ class Agent {
           { role: 'user',   content: userMessage },
         ],
         temperature: 0.2,
-        maxTokens:   600,
+        maxTokens:   1024,
       });
     } catch (e) {
       console.error(`[${this.name}] R1 LLM call failed: ${e.message}`);
@@ -262,7 +262,7 @@ class Agent {
           { role: 'user',   content: challengeMessage },
         ],
         temperature: 0.2,
-        maxTokens:   600,
+        maxTokens:   1024,
       });
     } catch (e) {
       console.error(`[${this.name}] R2 challenge failed: ${e.message}`);
