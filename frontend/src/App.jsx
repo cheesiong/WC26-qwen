@@ -25,7 +25,7 @@ function ThemeToggle() {
       onClick={toggleTheme}
       title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
       className="flex items-center justify-center w-8 h-8 rounded-seal transition-all duration-200
-        text-apple-tertiary hover:text-cn-gold hover:bg-cn-gold/10"
+        text-apple-tertiary dark:text-gray-400 hover:text-cn-gold hover:bg-cn-gold/10"
     >
       {theme === 'dark' ? <Sun size={15} /> : <Moon size={14} />}
     </button>
@@ -39,7 +39,7 @@ function LangToggle() {
       onClick={toggleLang}
       title={lang === 'en' ? '切换到中文' : 'Switch to English'}
       className="flex items-center justify-center h-8 px-2.5 rounded-seal text-[11px] font-bold font-serif
-        transition-all duration-200 text-apple-tertiary hover:text-cn-gold hover:bg-cn-gold/10"
+        transition-all duration-200 text-apple-tertiary dark:text-gray-400 hover:text-cn-gold hover:bg-cn-gold/10"
     >
       {lang === 'en' ? '中' : 'EN'}
     </button>
@@ -98,6 +98,8 @@ function ImperialAccentLine() {
 
 function DesktopNav() {
   const t = useT();
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
   return (
     <>
       <ImperialAccentLine />
@@ -108,8 +110,12 @@ function DesktopNav() {
         style={{
           backdropFilter: 'saturate(200%) blur(28px)',
           WebkitBackdropFilter: 'saturate(200%) blur(28px)',
-          background: 'linear-gradient(180deg, rgba(250,243,235,0.94) 0%, rgba(245,230,211,0.92) 100%)',
-          boxShadow: '0 1px 0 rgba(212,160,60,0.12), 0 4px 20px rgba(192,57,43,0.04)',
+          background: isDark
+            ? 'linear-gradient(180deg, rgba(28,40,51,0.95) 0%, rgba(22,32,42,0.93) 100%)'
+            : 'linear-gradient(180deg, rgba(250,243,235,0.94) 0%, rgba(245,230,211,0.92) 100%)',
+          boxShadow: isDark
+            ? '0 1px 0 rgba(212,160,60,0.08), 0 4px 20px rgba(0,0,0,0.3)'
+            : '0 1px 0 rgba(212,160,60,0.12), 0 4px 20px rgba(192,57,43,0.04)',
         }}
       >
         <div className="flex items-center w-full max-w-[1200px] relative">
@@ -127,7 +133,7 @@ function DesktopNav() {
                   `relative flex items-center gap-2 px-[18px] py-[7px] text-[13px] font-semibold rounded-seal transition-all duration-200 whitespace-nowrap font-serif tracking-[0.02em]
                   ${isActive
                     ? 'text-cn-red bg-cn-red/[0.06]'
-                    : 'text-apple-secondary hover:text-cn-ink hover:bg-cn-gold/[0.06]'
+                    : 'text-apple-secondary dark:text-gray-300 hover:text-cn-ink dark:hover:text-white hover:bg-cn-gold/[0.06]'
                   }`
                 }
               >
@@ -160,6 +166,8 @@ function DesktopNav() {
 }
 
 function MobileTopBar() {
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
   return (
     <>
       <ImperialAccentLine />
@@ -172,8 +180,12 @@ function MobileTopBar() {
           WebkitBackdropFilter: 'saturate(200%) blur(24px)',
           paddingLeft: 'max(20px, env(safe-area-inset-left))',
           paddingRight: 'max(20px, env(safe-area-inset-right))',
-          background: 'linear-gradient(180deg, rgba(250,243,235,0.95) 0%, rgba(245,230,211,0.93) 100%)',
-          boxShadow: '0 1px 0 rgba(212,160,60,0.10)',
+          background: isDark
+            ? 'linear-gradient(180deg, rgba(28,40,51,0.96) 0%, rgba(22,32,42,0.94) 100%)'
+            : 'linear-gradient(180deg, rgba(250,243,235,0.95) 0%, rgba(245,230,211,0.93) 100%)',
+          boxShadow: isDark
+            ? '0 1px 0 rgba(212,160,60,0.08)'
+            : '0 1px 0 rgba(212,160,60,0.10)',
         }}
       >
         <NavLink to="/" style={{ textDecoration: 'none' }}>
