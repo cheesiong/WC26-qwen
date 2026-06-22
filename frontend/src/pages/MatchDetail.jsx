@@ -935,7 +935,7 @@ export default function MatchDetail() {
                           <FactorIcon size={16} className="text-cn-red" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <span className="text-[13px] font-semibold text-apple-text block truncate">{factor.name}</span>
+                          <span className="text-[13px] font-semibold text-apple-text block truncate">{t('matchDetail.factorNames.' + factor.name) !== 'matchDetail.factorNames.' + factor.name ? t('matchDetail.factorNames.' + factor.name) : factor.name}</span>
                           <span className="text-[10px] text-apple-tertiary">{factor.weight.toFixed(0)}% {t('matchDetail.weightLabel')}</span>
                         </div>
                         <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold shrink-0 ${
@@ -943,8 +943,8 @@ export default function MatchDetail() {
                           factor.favors === 'AWAY' ? 'bg-cn-gold/[0.10] text-cn-gold' :
                           'bg-apple-raised text-apple-secondary'
                         }`}>
-                          {factor.favors === 'HOME' ? match.home_name :
-                           factor.favors === 'AWAY' ? match.away_name : t('matchDetail.neutral')}
+                          {factor.favors === 'HOME' ? teamName(match.home_team, match.home_name) :
+                           factor.favors === 'AWAY' ? teamName(match.away_team, match.away_name) : t('matchDetail.neutral')}
                         </span>
                       </div>
                       <p className="text-[11px] text-apple-secondary mb-2 leading-relaxed">{factor.description}</p>
@@ -965,7 +965,7 @@ export default function MatchDetail() {
               {prediction.methodology && (
                 <div className="border-t border-cn-gold/10 mt-4 pt-3">
                   <div className="text-xs text-apple-tertiary">
-                    📐 {t('matchDetail.methodology')}: {prediction.methodology}
+                    📐 {t('matchDetail.methodology')}: {prediction.methodology.replace(/BACKBONE|H2H/g, m => t('matchDetail.methodLabels.' + m) !== 'matchDetail.methodLabels.' + m ? t('matchDetail.methodLabels.' + m) : m)}
                   </div>
                 </div>
               )}
