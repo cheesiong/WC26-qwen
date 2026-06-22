@@ -6,6 +6,7 @@ const cron = require('node-cron');
 const { getDb } = require('./database/db');
 const { syncLiveResults } = require('./services/dataService');
 const { predict } = require('./services/predictionEngine');
+const { translatePredictionToZh } = require('./services/i18nService');
 const { recordMatchResult, getModelAccuracy, getGroupStandings } = require('./services/analysisService');
 const { fetchLineup } = require('./services/lineupService');
 const { getRealH2H } = require('./services/h2hService');
@@ -325,7 +326,11 @@ app.get('/api/h2h/:teamA/:teamB', async (req, res) => {
 app.get('/api/matches/:id/prediction', async (req, res) => {
   try {
     const forceRefresh = req.query.refresh === 'true';
-    const prediction = await predict(req.params.id, forceRefresh);
+    const lang = req.query.lang;
+    let prediction = await predict(req.params.id, forceRefresh);
+    if (lang === 'zh') {
+      prediction = await translatePredictionToZh(prediction, req.params.id);
+    }
     res.json(prediction);
     if (forceRefresh && !prediction.fromCache) {
       notifyIndexNow(`/matches/${req.params.id}`);

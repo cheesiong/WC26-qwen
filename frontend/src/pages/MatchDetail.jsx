@@ -8,7 +8,7 @@ import { RefreshCw, CheckCircle, AlertCircle, Users, ChevronDown, ChevronUp, His
 import { celebrate } from '../utils/celebrate';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine } from 'recharts';
 import { toSGTDateKey } from '../utils/time';
-import { useT, useFormatDate, useToSGT, useTeamName } from '../contexts/LanguageContext';
+import { useT, useFormatDate, useToSGT, useTeamName, useLang } from '../contexts/LanguageContext';
 import { DragonWatermark, PhoenixWatermark, QilinMark, BatCluster } from '../components/TangOrnaments';
 
 const FACTOR_ICONS = {
@@ -720,6 +720,7 @@ export default function MatchDetail() {
   const t = useT();
   const formatDate = useFormatDate();
   const teamName = useTeamName();
+  const { lang } = useLang();
   const { id } = useParams();
   const [match, setMatch] = useState(null);
   const [prediction, setPrediction] = useState(null);
@@ -731,10 +732,10 @@ export default function MatchDetail() {
   const [showH2H, setShowH2H] = useState(true);
   const [showLineup, setShowLineup] = useState(true);
 
-  async function load() {
+  async function load(currentLang) {
     setLoading(true);
     try {
-      const [m, p] = await Promise.all([getMatch(id), getPrediction(id)]);
+      const [m, p] = await Promise.all([getMatch(id), getPrediction(id, false, currentLang)]);
       setMatch(m);
       setPrediction(p);
       if (m) {
@@ -751,7 +752,7 @@ export default function MatchDetail() {
   }
 
 
-  useEffect(() => { load(); }, [id]);
+  useEffect(() => { load(lang); }, [id, lang]);
 
   if (loading) {
     return (

@@ -16,8 +16,13 @@ export const getUpsetWatch = () => api.get('/matches/upset-watch').then(r => r.d
 export const getMatch = (id) => api.get(`/matches/${id}`).then(r => r.data);
 export const submitResult = (id, data) => api.post(`/matches/${id}/result`, data).then(r => r.data);
 
-export const getPrediction = (matchId, refresh = false) =>
-  api.get(`/matches/${matchId}/prediction${refresh ? '?refresh=true' : ''}`).then(r => r.data);
+export const getPrediction = (matchId, refresh = false, lang = 'en') => {
+  const params = new URLSearchParams();
+  if (refresh) params.set('refresh', 'true');
+  if (lang === 'zh') params.set('lang', 'zh');
+  const qs = params.toString();
+  return api.get(`/matches/${matchId}/prediction${qs ? `?${qs}` : ''}`).then(r => r.data);
+};
 
 export const getPredictionHistory = (matchId) =>
   api.get(`/matches/${matchId}/predictions`).then(r => r.data);
