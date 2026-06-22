@@ -234,11 +234,31 @@ class Agent {
       });
     } catch (e) {
       console.error(`[${this.name}] R1 LLM call failed: ${e.message}`);
-      // Return a low-confidence parse-error output so the session continues
       return parseAgentOutput('', this.name, this.model, 1, Date.now() - start);
     }
 
-    return parseAgentOutput(result.text, this.name, this.model, 1, result.latencyMs);
+    let output = parseAgentOutput(result.text, this.name, this.model, 1, result.latencyMs);
+
+    // Retry once if JSON extraction failed
+    if (output.parseError) {
+      console.warn(`[${this.name}] R1: parse error, retrying…`);
+      try {
+        result = await chatComplete({
+          model:    this.model,
+          messages: [
+            { role: 'system', content: this.systemPrompt + '\n\nIMPORTANT: Respond ONLY with a valid JSON object. No extra text.' },
+            { role: 'user',   content: userMessage },
+          ],
+          temperature: 0.1,
+          maxTokens:   1024,
+        });
+        output = parseAgentOutput(result.text, this.name, this.model, 1, result.latencyMs);
+      } catch (e) {
+        console.error(`[${this.name}] R1 retry failed: ${e.message}`);
+      }
+    }
+
+    return output;
   }
 
   /**
@@ -266,11 +286,36 @@ class Agent {
       });
     } catch (e) {
       console.error(`[${this.name}] R2 challenge failed: ${e.message}`);
-      // Hold original position on failure
       return { ...ownOutput, round: 2, latencyMs: Date.now() - start };
     }
 
-    return parseAgentOutput(result.text, this.name, this.model, 2, result.latencyMs);
+    let output = parseAgentOutput(result.text, this.name, this.model, 2, result.latencyMs);
+
+    // Retry once if JSON extraction failed
+    if (output.parseError) {
+      console.warn(`[${this.name}] R2: parse error, retrying…`);
+      try {
+        result = await chatComplete({
+          model:    this.model,
+          messages: [
+            { role: 'system', content: this.systemPrompt + '\n\nIMPORTANT: Respond ONLY with a valid JSON object. No extra text.' },
+            { role: 'user',   content: challengeMessage },
+          ],
+          temperature: 0.1,
+          maxTokens:   1024,
+        });
+        output = parseAgentOutput(result.text, this.name, this.model, 2, result.latencyMs);
+      } catch (e) {
+        console.error(`[${this.name}] R2 retry failed: ${e.message}`);
+      }
+    }
+
+    // If retry also failed, hold original Round 1 position
+    if (output.parseError) {
+      return { ...ownOutput, round: 2, latencyMs: Date.now() - start };
+    }
+
+    return output;
   }
 }
 
