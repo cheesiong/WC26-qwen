@@ -695,11 +695,11 @@ function MatchHero({ match, isCompleted, prediction }) {
               </div>
             ) : (
               <div>
-                <div className="text-[20px] font-extrabold text-apple-tertiary tracking-widest">VS</div>
+                <div className="text-[20px] font-extrabold text-apple-tertiary tracking-widest">{t('matchDetail.vs')}</div>
                 <div className={`text-[10px] font-bold uppercase tracking-widest mt-1 ${
                   match.status === 'LIVE' ? 'text-cn-red animate-pulse' : 'text-cn-red'
                 }`}>
-                  {match.status}
+                  {t('matchDetail.matchStatus.' + match.status) !== 'matchDetail.matchStatus.' + match.status ? t('matchDetail.matchStatus.' + match.status) : match.status}
                 </div>
               </div>
             )}
@@ -910,7 +910,7 @@ export default function MatchDetail() {
             <div className="bg-apple-raised rounded-2xl p-4 text-center">
               <div className="text-[11px] font-medium text-apple-secondary mb-1.5">{t('matchDetail.confidence')}</div>
               <div className={`text-lg font-bold ${CONFIDENCE_COLORS[prediction.confidence] || 'text-apple-tertiary'}`}>
-                {prediction.confidence || '—'}
+                {t('matchDetail.confidenceLevel.' + prediction.confidence) !== 'matchDetail.confidenceLevel.' + prediction.confidence ? t('matchDetail.confidenceLevel.' + prediction.confidence) : prediction.confidence || '—'}
               </div>
             </div>
           </div>
