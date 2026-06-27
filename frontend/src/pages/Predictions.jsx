@@ -101,13 +101,15 @@ function PredictionCard({ match }) {
   const isLive = match.status === 'LIVE';
   const hasPrediction = match.most_likely_score != null;
 
-  // Parse prediction outcome
+  // Parse prediction outcome — derive from most_likely_score for consistency with detail page
   const predOutcome = hasPrediction
-    ? match.prob_home > match.prob_away
-      ? 'home'
-      : match.prob_away > match.prob_home
-        ? 'away'
-        : 'draw'
+    ? (() => {
+        const score = match.most_likely_score;
+        if (!score) return match.prob_home > match.prob_away ? 'home' : match.prob_away > match.prob_home ? 'away' : 'draw';
+        const [h, a] = score.split('-').map(Number);
+        if (isNaN(h) || isNaN(a)) return match.prob_home > match.prob_away ? 'home' : match.prob_away > match.prob_home ? 'away' : 'draw';
+        return h > a ? 'home' : h < a ? 'away' : 'draw';
+      })()
     : null;
 
   // Parse actual outcome
