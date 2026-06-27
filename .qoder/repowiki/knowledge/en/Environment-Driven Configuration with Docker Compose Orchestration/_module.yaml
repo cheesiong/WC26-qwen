@@ -1,0 +1,18 @@
+schema_version: 1
+module_path: configuration_system
+title: Environment-Driven Configuration with Docker Compose Orchestration
+scope: []
+source_files:
+    - backend/.env.example
+    - frontend/.env.example
+    - docker-compose.yml
+    - backend/server.js
+    - frontend/vite.config.js
+    - frontend/entrypoint.sh
+    - frontend/nginx.conf.template
+    - deploy.sh
+    - backend/services/predictionEngine.js
+    - backend/services/qwenClient.js
+    - backend/services/dataService.js
+depends_on: []
+related_to: []

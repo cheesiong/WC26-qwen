@@ -1,0 +1,3 @@
+- **LLM Integration**: Uses Alibaba Cloud DashScope API (Qwen-max/plus/turbo) via a custom OpenAI-compatible axios client (`services/qwenClient.js`).
+- **Database**: SQLite via `node-sqlite3-wasm` for serverless-compatible persistence (`database/db.js`).
+- **Web Scraping**: Uses `cheerio` and Google News RSS for pre-match intelligence gathering (`services/dataService.js`).

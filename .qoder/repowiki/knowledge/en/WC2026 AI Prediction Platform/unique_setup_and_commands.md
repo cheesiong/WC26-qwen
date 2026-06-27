@@ -1,0 +1,3 @@
+- `bash start.sh`: One-command local startup that installs dependencies, seeds the SQLite database, and launches both servers with readiness checks.
+- `ECS_IP=<ip> bash deploy.sh`: Automated deployment script that syncs files to a remote ECS instance and rebuilds Docker containers.
+- `bash setup-ecs.sh`: Provisions the underlying Alibaba Cloud infrastructure (VPC, Security Group, Instance) for first-time setup.

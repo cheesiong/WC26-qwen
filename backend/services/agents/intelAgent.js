@@ -26,6 +26,8 @@ Your analysis should consider:
 - Motivation differential — a team needing a win to advance plays with higher intensity
 - Compounding effects — multiple absences or low motivation + rotation = significant handicap
 
+CRITICAL RULE: Only reference player absences that appear in the "INJURIES / UNAVAILABILITIES" section above. If a player is NOT listed there, they are available and playing. Do NOT claim any player is injured, suspended, or absent based on your own knowledge — rely ONLY on the provided intel.
+
 Calibration guide:
 - 1 key player injured: shift favoured team down ~3-5%
 - 2+ key players injured: shift down ~8-12%

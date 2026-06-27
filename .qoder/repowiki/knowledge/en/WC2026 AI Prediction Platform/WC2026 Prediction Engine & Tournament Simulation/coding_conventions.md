@@ -1,0 +1,4 @@
+- Services expose named exports for both logic functions and singleton instances (e.g., `agent` in agent modules, `getDb` in db module).
+- Prediction and analysis services use lazy-loading (`require()` inside functions) to resolve circular dependencies between `predictionEngine`, `analysisService`, and `dataService`.
+- Database queries use prepared statements with parameterized inputs to prevent SQL injection, consistently accessed via `getDb().prepare()`.
+- Agent modules follow a uniform structure: a system prompt constant, a `buildPrompt` function for context injection, and a singleton `Agent` instance export.

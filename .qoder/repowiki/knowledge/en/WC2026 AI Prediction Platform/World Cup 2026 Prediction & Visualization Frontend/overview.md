@@ -1,0 +1,1 @@
+A React-based single-page application providing AI-driven match predictions, tournament bracket simulations, and interactive group standings for the 2026 FIFA World Cup.

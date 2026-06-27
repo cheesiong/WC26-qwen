@@ -1,0 +1,3 @@
+- **Environment**: Requires `FOOTBALL_DATA_API_KEY` for live scores and `DASHSCOPE_API_KEY` for LLM predictions (see `.env.example`).
+- **Startup**: `npm start` seeds the database (`node database/seed.js`) before launching the server.
+- **Testing**: `npm test` runs unit tests for the prediction engine using Node's native test runner.

@@ -618,7 +618,9 @@ async function generateInsight(homeTeam, awayTeam, finalProbs, factors, webIntel
 Given this match data:
 ${context}
 
-Write a 2-3 sentence analyst insight in plain English. Be specific — mention team names, actual numbers, and the most decisive factors. Do not use bullet points, headers, or markdown. Do not start with "Based on" or "According to". Write as if you are a pundit giving a sharp take before kickoff.`;
+Write a 2-3 sentence analyst insight in plain English. Be specific — mention team names, actual numbers, and the most decisive factors. Do not use bullet points, headers, or markdown. Do not start with "Based on" or "According to". Write as if you are a pundit giving a sharp take before kickoff.
+
+CRITICAL: Only mention player absences if they appear in the factors above. Do NOT claim any player is injured, suspended, or missing based on your own knowledge. If no injuries are listed, all players are available.`;
 
   try {
     const result = await chatComplete({
@@ -627,7 +629,31 @@ Write a 2-3 sentence analyst insight in plain English. Be specific — mention t
       temperature: 0.7,
       maxTokens: 256,
     });
-    if (result.text?.length > 20) return result.text;
+    let insight = result.text?.length > 20 ? result.text : null;
+    // Post-process: remove any player absence claims not in the validated injuries list
+    if (insight) {
+      const validatedInjuries = [
+        ...(webIntel?.homeInjuries || []),
+        ...(webIntel?.awayInjuries || []),
+      ];
+      // Pattern: "missing/without/no/absent [PlayerName]" — catches separators like spaces, em-dashes, colons
+      const absenceRe = /(?:missing\s+|without\s+|no\s+|absent[:\s]*)([A-Z][a-zA-Z0-9]+(?:\s+(?!and\b|or\b)[A-Z][a-zA-Z0-9]+)*)/gi;
+      let match;
+      while ((match = absenceRe.exec(insight)) !== null) {
+        const player = match[1];
+        const isInInjuries = validatedInjuries.some(
+          inj => inj.toLowerCase() === player.toLowerCase()
+        );
+        if (!isInInjuries) {
+          console.warn(`[generateInsight] Insight mentions "${player}" as absent but not in validated injuries — removing claim`);
+          // Remove the absence claim from the insight
+          insight = insight.replace(match[0], '');
+        }
+      }
+      // Clean up any double spaces or awkward phrasing from removals
+      insight = insight.replace(/\s{2,}/g, ' ').replace(/,\s*,/g, ',').replace(/[-—]\s*[-—]/g, '—').trim();
+    }
+    return insight || generateInsightFallback(homeTeam, awayTeam, finalProbs, factors);
   } catch (e) {
     console.warn('Qwen insight generation failed, using fallback:', e.message);
   }

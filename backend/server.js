@@ -627,8 +627,9 @@ async function runPredictionCron() {
   console.log(`[cron] done: ${ok}/${matches.length} predictions updated`);
 }
 
-cron.schedule('0 0-12 * * *',  runPredictionCron, { timezone: 'Asia/Singapore' });
-cron.schedule('30 20,21 * * *', runPredictionCron, { timezone: 'Asia/Singapore' });
+cron.schedule('0 0-12 * * *',   runPredictionCron, { timezone: 'Asia/Singapore' }); // hourly midnight–noon
+cron.schedule('0 14,16,18 * * *', runPredictionCron, { timezone: 'Asia/Singapore' }); // 2pm, 4pm, 6pm SGT
+cron.schedule('30 20,21,22 * * *', runPredictionCron, { timezone: 'Asia/Singapore' }); // 8:30pm, 9:30pm, 10:30pm SGT
 
 // Serve React frontend in production
 const frontendDist = path.join(__dirname, '../frontend/dist');

@@ -1,0 +1,14 @@
+schema_version: 1
+module_path: dependency_management
+title: npm-based Dependency Management with Lockfiles and Containerized Installation
+scope: []
+source_files:
+    - backend/package.json
+    - backend/package-lock.json
+    - frontend/package.json
+    - frontend/package-lock.json
+    - backend/Dockerfile
+    - frontend/Dockerfile
+    - docker-compose.yml
+depends_on: []
+related_to: []

@@ -53,8 +53,18 @@ Respond ONLY with a valid JSON object — no extra text, no markdown — in this
 The three probability values must sum to 1.0. Keep each evidence bullet under 80 characters — be concise.`;
 
 // ── JSON extraction ───────────────────────────────────────────────
+function sanitizeJSON(text) {
+  if (!text) return text;
+  // Fix a common qwen-plus mistake: evidence array closed with } instead of ]
+  // Pattern: "string"\n  },\n  "nextKey"  →  "string"\n  ],\n  "nextKey"
+  // We look for a quoted string followed by } then , then a quoted key — inside what should be an array
+  return text.replace(/"(\s*)\},(\s*)"(\w)/g, '"$1],$2"$3');
+}
+
 function extractJSON(text) {
   if (!text || typeof text !== 'string') return null;
+
+  text = sanitizeJSON(text);
 
   // 1. Try ```json ... ``` code fence (non-greedy)
   const fence = text.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
@@ -230,7 +240,7 @@ class Agent {
           { role: 'user',   content: userMessage },
         ],
         temperature: 0.2,
-        maxTokens:   1024,
+        maxTokens:   1500,
       });
     } catch (e) {
       console.error(`[${this.name}] R1 LLM call failed: ${e.message}`);
@@ -250,7 +260,7 @@ class Agent {
             { role: 'user',   content: userMessage },
           ],
           temperature: 0.1,
-          maxTokens:   1024,
+          maxTokens:   1500,
         });
         output = parseAgentOutput(result.text, this.name, this.model, 1, result.latencyMs);
       } catch (e) {
@@ -282,7 +292,7 @@ class Agent {
           { role: 'user',   content: challengeMessage },
         ],
         temperature: 0.2,
-        maxTokens:   1024,
+        maxTokens:   1500,
       });
     } catch (e) {
       console.error(`[${this.name}] R2 challenge failed: ${e.message}`);
@@ -302,7 +312,7 @@ class Agent {
             { role: 'user',   content: challengeMessage },
           ],
           temperature: 0.1,
-          maxTokens:   1024,
+          maxTokens:   1500,
         });
         output = parseAgentOutput(result.text, this.name, this.model, 2, result.latencyMs);
       } catch (e) {

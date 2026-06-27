@@ -1,0 +1,15 @@
+schema_version: 1
+module_path: logging_system
+title: Console-Based Logging Without Dedicated Framework
+scope: []
+source_files:
+    - backend/server.js
+    - backend/services/bracketService.js
+    - backend/services/dataService.js
+    - backend/services/calibrationService.js
+    - backend/services/analysisService.js
+    - backend/database/seed.js
+    - frontend/src/pages/Dashboard.jsx
+    - frontend/src/pages/MatchDetail.jsx
+depends_on: []
+related_to: []

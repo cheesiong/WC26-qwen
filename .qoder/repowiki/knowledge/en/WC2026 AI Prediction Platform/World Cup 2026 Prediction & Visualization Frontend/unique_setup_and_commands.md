@@ -1,0 +1,3 @@
+- **Development**: Run `npm run dev` to start the Vite dev server on port 6001, which proxies `/api` requests to `http://localhost:6173`.
+- **Production Build**: `npm run build` triggers `vite build` followed by `react-snap` to pre-render pages defined in the `reactSnap.include` array.
+- **Docker Deployment**: The `Dockerfile` uses `nginx:alpine` and an `entrypoint.sh` script that supports environment-variable-driven Nginx configuration and optional HTTPS setup via Certbot if a `DOMAIN` env var is provided.

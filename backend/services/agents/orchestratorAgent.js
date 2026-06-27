@@ -159,24 +159,26 @@ function buildAgentFactors(agentOutputs, matchContext) {
   const { home, away } = matchContext;
   const totalW = agentOutputs.reduce((s, o) => s + (o.finalWeight ?? o.weightRecommendation ?? 0), 0) || 1;
 
-  return agentOutputs.map(o => {
-    const p   = o.probability;
-    const pct = +(((o.finalWeight ?? o.weightRecommendation ?? 0) / totalW) * 100).toFixed(1);
-    const favors = p.winHome > p.winAway + 0.05 ? 'HOME'
-                 : p.winAway > p.winHome + 0.05 ? 'AWAY'
-                 : 'NEUTRAL';
-    return {
-      name:        o.agent,
-      description: o.evidence.slice(0, 3).join(' · ') || `${o.agent} analysis`,
-      favors,
-      impact:      o.confidence ?? 0.5,
-      weight:      pct,
-      model:       o.model,
-      confidence:  o.confidence,
-      probability: p,
-      flags:       o.flags ?? [],
-    };
-  }).sort((a, b) => b.impact - a.impact);
+  return agentOutputs
+    .filter(o => !(o.flags ?? []).includes('PARSE_ERROR'))  // hide agents that failed to parse
+    .map(o => {
+      const p   = o.probability;
+      const pct = +(((o.finalWeight ?? o.weightRecommendation ?? 0) / totalW) * 100).toFixed(1);
+      const favors = p.winHome > p.winAway + 0.05 ? 'HOME'
+                   : p.winAway > p.winHome + 0.05 ? 'AWAY'
+                   : 'NEUTRAL';
+      return {
+        name:        o.agent,
+        description: o.evidence.slice(0, 3).join(' · ') || `${o.agent} analysis`,
+        favors,
+        impact:      o.confidence ?? 0.5,
+        weight:      pct,
+        model:       o.model,
+        confidence:  o.confidence,
+        probability: p,
+        flags:       o.flags ?? [],
+      };
+    }).sort((a, b) => b.impact - a.impact);
 }
 
 // ── Build methodology string ──────────────────────────────────────
@@ -223,12 +225,40 @@ Write 2-3 sentences of sharp analyst commentary in plain English. Be specific �
       temperature: 0.7,
       maxTokens:   280,
     });
-    if (result.text?.length > 20) return result.text;
+    let insight = result.text?.length > 20 ? result.text : null;
+    // Post-process: remove any player absence claims not in the validated injuries list
+    if (insight) {
+      const validatedInjuries = [
+        ...(webIntel?.homeInjuries || []),
+        ...(webIntel?.awayInjuries || []),
+      ];
+      // Pattern: "missing/without/no/absent [PlayerName]" — catches separators like spaces, em-dashes, colons
+      const absenceRe = /(?:missing\s+|without\s+|no\s+|absent[:\s]*)([A-Z][a-zA-Z0-9]+(?:\s+(?!and\b|or\b)[A-Z][a-zA-Z0-9]+)*)/gi;
+      let match;
+      while ((match = absenceRe.exec(insight)) !== null) {
+        const player = match[1];
+        const isInInjuries = validatedInjuries.some(
+          inj => inj.toLowerCase() === player.toLowerCase()
+        );
+        if (!isInInjuries) {
+          console.warn(`[generateOrchestratorInsight] Insight mentions "${player}" as absent but not in validated injuries — removing claim`);
+          // Remove the absence claim from the insight
+          insight = insight.replace(match[0], '');
+        }
+      }
+      // Clean up any double spaces or awkward phrasing from removals
+      insight = insight.replace(/\s{2,}/g, ' ').replace(/,\s*,/g, ',').replace(/[-—]\s*[-—]/g, '—').trim();
+    }
+    return insight || generateOrchestratorFallback(home, away, finalProbs, agentOutputs, conflicts);
   } catch (e) {
     console.warn('[orchestratorAgent] insight generation failed:', e.message);
   }
 
-  // Fallback — no LLM needed
+  return generateOrchestratorFallback(home, away, finalProbs, agentOutputs, conflicts);
+}
+
+// Fallback — no LLM needed
+function generateOrchestratorFallback(home, away, finalProbs, agentOutputs, conflicts) {
   const fav  = finalProbs.winHome > finalProbs.winAway ? home.name : away.name;
   const favP = (Math.max(finalProbs.winHome, finalProbs.winAway) * 100).toFixed(0);
   const n    = agentOutputs.length;

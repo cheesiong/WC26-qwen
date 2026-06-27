@@ -372,6 +372,25 @@ Rules:
       claimedHome.length !== parsed.homeInjuries.length ||
       claimedAway.length !== parsed.awayInjuries.length;
     if (droppedAny) parsed.keySummary = null;
+    // Also validate keySummary: if it mentions a player being absent/injured but
+    // that player isn't in the validated injuries list, null out the summary
+    // (guards against LLM hallucinations like "no CR7" when Ronaldo is playing).
+    if (parsed.keySummary) {
+      const allValidatedInjuries = [...parsed.homeInjuries, ...parsed.awayInjuries];
+      // Match player names after absence keywords: "no CR7", "missing Ronaldo", "without Mbappe", etc.
+      const playerMentionRe = /(?:no |missing |without |absent: )([A-Z][a-zA-Z0-9]+(?:\s+[A-Z][a-zA-Z0-9]+)*)/i;
+      const match = parsed.keySummary.match(playerMentionRe);
+      if (match) {
+        const mentionedPlayer = match[1];
+        const isInInjuries = allValidatedInjuries.some(
+          inj => inj.toLowerCase() === mentionedPlayer.toLowerCase()
+        );
+        if (!isInInjuries) {
+          console.warn(`[parseIntelWithLLM] keySummary mentions "${mentionedPlayer}" as absent but not in validated injuries — nulling summary`);
+          parsed.keySummary = null;
+        }
+      }
+    }
     return parsed;
   } catch (e) {
     console.warn('Qwen intel parsing failed:', e.message);

@@ -1,0 +1,1 @@
+Orchestrates a Node.js multi-agent prediction engine and a React visualization frontend through unified development scripts and containerized deployment.
