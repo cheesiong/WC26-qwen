@@ -203,7 +203,7 @@ async function generateOrchestratorInsight(matchContext, finalProbs, agentOutput
     .join('\n');
 
   const conflictLine = conflicts.length > 0
-    ? `Agent disagreements resolved: ${conflicts.map(c => `${c.agentA} vs ${c.agentB} (Δ${(c.delta * 100).toFixed(0)}%)`).join(', ')}.`
+    ? `\nAgent disagreements were detected and resolved through negotiation: ${conflicts.map(c => `${c.agentA} vs ${c.agentB} (Δ${(c.delta * 100).toFixed(0)}%)`).join(', ')}.`
     : '';
 
   const prompt = `You are a concise football analyst writing a pre-match insight for a World Cup 2026 prediction app.
@@ -213,10 +213,11 @@ Multi-agent final probabilities:
   ${home.name} win: ${(finalProbs.winHome * 100).toFixed(0)}%  |  Draw: ${(finalProbs.draw * 100).toFixed(0)}%  |  ${away.name} win: ${(finalProbs.winAway * 100).toFixed(0)}%
 
 Key analyst findings:
-${topEvidence}
-${conflictLine}${webIntel?.keySummary ? `\nLatest news: ${webIntel.keySummary}` : ''}
+${topEvidence}${conflictLine}${webIntel?.keySummary ? `\nLatest news: ${webIntel.keySummary}` : ''}
 
-Write 2-3 sentences of sharp analyst commentary in plain English. Be specific — use team names and concrete numbers. No bullet points, no markdown, no "Based on". Write as a pundit giving a take before kickoff.`;
+Write 2-3 sentences of sharp analyst commentary in plain English. Be specific — use team names and concrete numbers. No bullet points, no markdown, no "Based on". Write as a pundit giving a take before kickoff.
+
+If agent disagreements were resolved (shown above), briefly mention that multiple analysis methods converged after debate — this adds credibility to the prediction.`;
 
   try {
     const result = await chatComplete({
