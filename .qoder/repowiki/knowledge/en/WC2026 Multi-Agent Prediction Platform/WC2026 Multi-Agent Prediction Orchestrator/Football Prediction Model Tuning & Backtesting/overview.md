@@ -1,0 +1,1 @@
+Provides offline backtesting, hyperparameter tuning, and database maintenance scripts for football prediction models.

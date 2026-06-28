@@ -1,6 +1,6 @@
 schema_version: 1
 module_path: frontend
-title: World Cup 2026 Prediction & Visualization Frontend
+title: World Cup 2026 Prediction Frontend
 scope:
     - frontend/
 source_files: []

@@ -144,7 +144,9 @@ function PredictionCard({ match }) {
       {/* Group badge */}
       <div className="flex items-center justify-between mb-3">
         <span className="text-[10px] font-bold uppercase tracking-wider text-cn-gold bg-cn-gold/8 px-2 py-0.5 rounded-seal">
-          {t('common.worldCup2026').includes('2026') ? `Group ${match.group_code}` : `${match.group_code}组`}
+          {match.group_code
+            ? (t('common.worldCup2026').includes('2026') ? `Group ${match.group_code}` : `${match.group_code}组`)
+            : match.stage || ''}
         </span>
         {isLive && (
           <span className="inline-flex items-center gap-1 text-[10px] font-bold text-cn-red">
@@ -286,11 +288,11 @@ export default function Predictions() {
   const [loading, setLoading] = useState(true);
 
   // Filters
-  const [statusFilter, setStatusFilter] = useState('SCHEDULED');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [groupFilter, setGroupFilter] = useState('all');
 
   useEffect(() => {
-    Promise.all([getMatches({ stage: 'GROUP' }), getAccuracy()])
+    Promise.all([getMatches({}), getAccuracy()])
       .then(([m, a]) => {
         setMatches(m);
         setAccuracy(a);
@@ -306,7 +308,11 @@ export default function Predictions() {
       list = list.filter(m => m.status === statusFilter.toUpperCase());
     }
     if (groupFilter !== 'all') {
-      list = list.filter(m => m.group_code === groupFilter);
+      if (groupFilter === 'knockout') {
+        list = list.filter(m => !m.group_code);
+      } else {
+        list = list.filter(m => m.group_code === groupFilter);
+      }
     }
     return list;
   }, [matches, statusFilter, groupFilter]);
@@ -457,6 +463,16 @@ export default function Predictions() {
               }`}
           >
             {t('common.allGroups')}
+          </button>
+          <button
+            onClick={() => setGroupFilter('knockout')}
+            className={`px-2.5 py-1 text-[10px] font-semibold rounded-seal transition-all duration-200
+              ${groupFilter === 'knockout'
+                ? 'bg-cn-gold/20 text-cn-gold border border-cn-gold/30'
+                : 'bg-apple-raised/40 text-apple-tertiary hover:bg-cn-gold/8'
+              }`}
+          >
+            KO
           </button>
           {GROUPS.map(g => (
             <button

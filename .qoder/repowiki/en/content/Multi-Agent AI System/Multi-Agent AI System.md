@@ -18,6 +18,14 @@
 - [analysisService.js](file://backend/services/analysisService.js)
 </cite>
 
+## Update Summary
+**Changes Made**
+- Enhanced Orchestrator Agent with improved data validation and post-processing systems
+- Added player absence claim validation to prevent hallucinations in insights
+- Improved conflict resolution messaging with detailed agent disagreement reporting
+- Increased maximum tokens for better analysis outputs (maxTokens: 280)
+- Strengthened data integrity checks for Intel Agent injuries validation
+
 ## Table of Contents
 1. [Introduction](#introduction)
 2. [Project Structure](#project-structure)
@@ -31,6 +39,8 @@
 
 ## Introduction
 This document describes the multi-agent AI system architecture used for World Cup 2026 match predictions. The system orchestrates five specialized agents that analyze different aspects of a match (statistical backbone, recent form, head-to-head history, pre-match intelligence, and confirmed lineups), then resolve conflicts and negotiate differences to produce a robust, calibrated final prediction. The framework enforces strict output schemas, conflict detection thresholds, and weight-based blending to ensure reliable probabilistic outcomes.
+
+**Updated** Enhanced with improved data validation systems to prevent hallucinated player absence claims and strengthened conflict resolution messaging.
 
 ## Project Structure
 The multi-agent system resides in the backend under services/agents and integrates with data services, prediction engines, and persistent storage.
@@ -88,7 +98,7 @@ PE --> LS
 - [h2hAgent.js:1-107](file://backend/services/agents/h2hAgent.js#L1-L107)
 - [intelAgent.js:1-126](file://backend/services/agents/intelAgent.js#L1-L126)
 - [lineupAgent.js:1-118](file://backend/services/agents/lineupAgent.js#L1-L118)
-- [orchestratorAgent.js:1-471](file://backend/services/agents/orchestratorAgent.js#L1-L471)
+- [orchestratorAgent.js:1-502](file://backend/services/agents/orchestratorAgent.js#L1-L502)
 - [dataService.js:1-583](file://backend/services/dataService.js#L1-L583)
 - [lineupService.js:1-425](file://backend/services/lineupService.js#L1-L425)
 - [h2hService.js:1-315](file://backend/services/h2hService.js#L1-L315)
@@ -98,20 +108,22 @@ PE --> LS
 
 **Section sources**
 - [agentFramework.js:1-576](file://backend/services/agents/agentFramework.js#L1-L576)
-- [orchestratorAgent.js:1-471](file://backend/services/agents/orchestratorAgent.js#L1-L471)
+- [orchestratorAgent.js:1-502](file://backend/services/agents/orchestratorAgent.js#L1-L502)
 - [db.js:1-252](file://backend/database/db.js#L1-L252)
 
 ## Core Components
 - Agent framework: Defines the base Agent class and AgentSession orchestration, including JSON schema enforcement, conflict detection, negotiation, and final output blending.
 - Specialized agents: Five agents interpret domain-specific signals and produce structured outputs.
-- Orchestrator: Coordinates agent execution, conflict resolution, and final prediction synthesis.
+- Orchestrator: Coordinates agent execution, conflict resolution, and final prediction synthesis with enhanced data validation.
 - Data services: Provide external data (form, H2H, intelligence, lineups) and caching.
 - Storage: SQLite-backed persistence for predictions, agent sessions, conflicts, and metadata.
 - LLM client: Unified Qwen/DashScope integration for agent reasoning.
 
+**Updated** Enhanced Orchestrator Agent now includes sophisticated data validation to prevent hallucinated player absence claims and improved conflict resolution messaging.
+
 **Section sources**
 - [agentFramework.js:1-576](file://backend/services/agents/agentFramework.js#L1-L576)
-- [orchestratorAgent.js:1-471](file://backend/services/agents/orchestratorAgent.js#L1-L471)
+- [orchestratorAgent.js:1-502](file://backend/services/agents/orchestratorAgent.js#L1-L502)
 - [db.js:167-207](file://backend/database/db.js#L167-L207)
 - [qwenClient.js:1-123](file://backend/services/qwenClient.js#L1-L123)
 
@@ -119,7 +131,7 @@ PE --> LS
 The multi-agent pipeline runs in two rounds:
 - Round 1: All active agents run in parallel, generating structured probability assessments.
 - Conflict detection: Pairwise comparison of outputs identifies significant probability deltas.
-- Round 2: Agents challenge each other on conflicting pairs; the agent that moves less “wins” and receives a weight boost; the loser’s output is replaced with the concession.
+- Round 2: Agents challenge each other on conflicting pairs; the agent that moves less "wins" and receives a weight boost; the loser's output is replaced with the concession.
 - Final blending: Outputs are merged using log-pool weighting and temperature scaling, then scorelines are derived from the adjusted matrix.
 
 ```mermaid
@@ -284,6 +296,8 @@ Prob --> End(["Return AgentOutput"])
 - Processing: Verifies claims against source text to prevent hallucinations; computes injury penalties and motivation adjustments.
 - Output: Probability distribution reflecting intel impact, confidence, evidence bullets, weight recommendation.
 
+**Updated** Enhanced with improved data validation to prevent hallucinated player absence claims by verifying against validated injuries list.
+
 ```mermaid
 flowchart TD
 Start(["Fetch Web Intel"]) --> Scrape["Scrape Google News RSS"]
@@ -335,6 +349,8 @@ Probs --> End(["Return AgentOutput"])
 - AgentSession coordinates dispatch, conflict detection, negotiation, and final output assembly.
 - Final blending uses log-pool weighting and temperature scaling; scorelines derived from reweighted matrix.
 
+**Updated** Enhanced with improved data validation systems to prevent hallucinated player absence claims and strengthened conflict resolution messaging.
+
 ```mermaid
 sequenceDiagram
 participant O as "Orchestrator"
@@ -352,6 +368,7 @@ end
 O->>S : buildFinalOutputs()
 O->>DB : save(session)
 O->>DB : save(prediction)
+O->>O : generateOrchestratorInsight()
 O-->>O : logPool + temperature + scorelines
 ```
 
@@ -364,6 +381,18 @@ O-->>O : logPool + temperature + scorelines
 - [orchestratorAgent.js:278-467](file://backend/services/agents/orchestratorAgent.js#L278-L467)
 - [agentFramework.js:322-561](file://backend/services/agents/agentFramework.js#L322-L561)
 - [db.js:167-207](file://backend/database/db.js#L167-L207)
+
+### Enhanced Orchestrator Agent Features
+- **Data Validation**: Post-processing system validates player absence claims against the validated injuries list to prevent hallucinations.
+- **Conflict Resolution Messaging**: Improved reporting of agent disagreements with detailed delta percentages and agent pairings.
+- **Enhanced Token Limits**: Increased maxTokens to 280 for better analysis outputs and more comprehensive insights.
+- **Improved Integrity Checks**: Strengthened validation of Intel Agent injuries to ensure only verified claims are included in final insights.
+
+**Updated** The Orchestrator Agent now includes sophisticated data validation to prevent hallucinated player absence claims by cross-referencing insights against validated injuries lists and enhanced conflict resolution messaging for better transparency.
+
+**Section sources**
+- [orchestratorAgent.js:196-271](file://backend/services/agents/orchestratorAgent.js#L196-L271)
+- [intelAgent.js:29-40](file://backend/services/agents/intelAgent.js#L29-L40)
 
 ## Dependency Analysis
 - Coupling:
@@ -417,7 +446,7 @@ PE --> LS
 - [db.js:1-6](file://backend/database/db.js#L1-L6)
 
 **Section sources**
-- [orchestratorAgent.js:1-471](file://backend/services/agents/orchestratorAgent.js#L1-L471)
+- [orchestratorAgent.js:1-502](file://backend/services/agents/orchestratorAgent.js#L1-L502)
 - [agentFramework.js:1-576](file://backend/services/agents/agentFramework.js#L1-L576)
 - [predictionEngine.js:1-1020](file://backend/services/predictionEngine.js#L1-L1020)
 
@@ -428,8 +457,9 @@ PE --> LS
 - Temperature scaling: Calibrates output confidence post-blending.
 - Caching: Web intel and team form cached to reduce repeated network calls.
 - Weight adjustments: Winners gain 1.3× weight; losers drop to 0.6×, encouraging convergence.
+- **Enhanced Validation**: Data validation adds minimal overhead while significantly improving output integrity.
 
-[No sources needed since this section provides general guidance]
+**Updated** Added enhanced data validation systems with minimal performance impact for improved output integrity.
 
 ## Troubleshooting Guide
 - LLM failures:
@@ -441,6 +471,12 @@ PE --> LS
   - H2HAgent skips when fewer than 2 meetings; IntelAgent and LineupAgent return null prompts when data is missing.
 - Persistence issues:
   - Session and conflict records saved with error handling; check agent_messages and agent_conflicts tables.
+- **Enhanced Validation Issues**:
+  - Player absence claims automatically removed if not found in validated injuries list.
+  - Conflict resolution messaging provides detailed agent disagreement reporting.
+  - Increased token limits (maxTokens: 280) improve analysis depth and quality.
+
+**Updated** Enhanced troubleshooting guidance for new validation systems and improved conflict resolution messaging.
 
 **Section sources**
 - [agentFramework.js:221-320](file://backend/services/agents/agentFramework.js#L221-L320)
@@ -452,3 +488,5 @@ PE --> LS
 
 ## Conclusion
 The multi-agent system combines rigorous domain expertise (statistical, form, H2H, intelligence, lineup) with principled conflict resolution and weight-based blending. By enforcing strict output schemas, detecting meaningful disagreements, and calibrating final predictions, it produces reliable, interpretable match outcomes while maintaining transparency through persisted agent sessions and conflict resolutions.
+
+**Updated** Enhanced with improved data validation systems that prevent hallucinated player absence claims, strengthened conflict resolution messaging, and increased token limits for better analysis outputs, ensuring even greater reliability and interpretability of match predictions.

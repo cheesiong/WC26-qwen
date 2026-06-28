@@ -19,6 +19,14 @@
 - [db.js](file://backend/database/db.js)
 </cite>
 
+## Update Summary
+**Changes Made**
+- Enhanced data consistency through most_likely_score field derivation for outcome validation
+- Implemented robust post-processing validation to prevent false information in insights
+- Added comprehensive fallback mechanisms for LLM failures across all components
+- Improved validation of web intelligence parsing to prevent hallucinations
+- Strengthened error handling and data integrity checks throughout the prediction pipeline
+
 ## Table of Contents
 1. [Introduction](#introduction)
 2. [Project Structure](#project-structure)
@@ -32,7 +40,9 @@
 10. [Appendices](#appendices)
 
 ## Introduction
-This document describes the prediction engine system powering match outcome forecasts for the 2026 FIFA World Cup. It explains the Dixon-Coles bivariate Poisson backbone, temperature scaling for probability calibration, and ensemble prediction blending. It documents the multi-agent coordination workflow, conflict detection and negotiation protocols, and the agent framework design. It also covers session management, audit trails, and methodology tracking, along with fallback mechanisms when AI features are disabled and integration with external data sources.
+This document describes the prediction engine system powering match outcome forecasts for the 2026 FIFA World Cup. It explains the Dixon-Coles bivariate Poisson backbone, temperature scaling for probability calibration, and ensemble prediction blending. It documents the multi-agent coordination workflow, conflict detection and negotiation protocols, and the agent framework design. It also covers session management, audit trails, and methodology tracking, along with enhanced fallback mechanisms when AI features are disabled and integration with external data sources.
+
+**Updated** Enhanced with improved data consistency, robust validation mechanisms, and comprehensive fallback systems to ensure reliable predictions even when external data sources fail.
 
 ## Project Structure
 The prediction engine spans several backend services:
@@ -97,7 +107,7 @@ AS --> DB
 ```
 
 **Diagram sources**
-- [predictionEngine.js:1-1020](file://backend/services/predictionEngine.js#L1-L1020)
+- [predictionEngine.js:1-1046](file://backend/services/predictionEngine.js#L1-L1046)
 - [calibrationService.js:1-132](file://backend/services/calibrationService.js#L1-L132)
 - [agentFramework.js:1-576](file://backend/services/agents/agentFramework.js#L1-L576)
 - [orchestratorAgent.js:1-471](file://backend/services/agents/orchestratorAgent.js#L1-L471)
@@ -107,14 +117,14 @@ AS --> DB
 - [intelAgent.js:1-126](file://backend/services/agents/intelAgent.js#L1-L126)
 - [lineupAgent.js:1-118](file://backend/services/agents/lineupAgent.js#L1-L118)
 - [qwenClient.js:1-123](file://backend/services/qwenClient.js#L1-L123)
-- [dataService.js:1-583](file://backend/services/dataService.js#L1-L583)
+- [dataService.js:1-602](file://backend/services/dataService.js#L1-L602)
 - [lineupService.js:1-425](file://backend/services/lineupService.js#L1-L425)
 - [h2hService.js:1-315](file://backend/services/h2hService.js#L1-L315)
 - [analysisService.js:1-422](file://backend/services/analysisService.js#L1-L422)
 - [db.js:1-252](file://backend/database/db.js#L1-L252)
 
 **Section sources**
-- [predictionEngine.js:1-1020](file://backend/services/predictionEngine.js#L1-L1020)
+- [predictionEngine.js:1-1046](file://backend/services/predictionEngine.js#L1-L1046)
 - [agentFramework.js:1-576](file://backend/services/agents/agentFramework.js#L1-L576)
 - [orchestratorAgent.js:1-471](file://backend/services/agents/orchestratorAgent.js#L1-L471)
 - [db.js:1-252](file://backend/database/db.js#L1-L252)
@@ -127,9 +137,13 @@ AS --> DB
 - Session management and audit trail: persistent logs of agent sessions, messages, conflicts, and resolutions.
 - Data acquisition: live feeds, web scraping, and caching for form, H2H, intelligence, and lineups.
 - Learning and calibration: post-match analysis, Brier scoring, and periodic refit of temperature and Dixon-Coles rho.
+- **Enhanced Validation**: Robust post-processing validation to prevent false information and hallucinations in AI-generated content.
+- **Comprehensive Fallbacks**: Multi-layered fallback mechanisms for LLM failures across all prediction components.
+
+**Updated** Added enhanced validation and comprehensive fallback mechanisms for improved reliability and data integrity.
 
 **Section sources**
-- [predictionEngine.js:1-1020](file://backend/services/predictionEngine.js#L1-L1020)
+- [predictionEngine.js:1-1046](file://backend/services/predictionEngine.js#L1-L1046)
 - [calibrationService.js:1-132](file://backend/services/calibrationService.js#L1-L132)
 - [agentFramework.js:1-576](file://backend/services/agents/agentFramework.js#L1-L576)
 - [orchestratorAgent.js:1-471](file://backend/services/agents/orchestratorAgent.js#L1-L471)
@@ -177,7 +191,7 @@ end
 ```
 
 **Diagram sources**
-- [predictionEngine.js:665-896](file://backend/services/predictionEngine.js#L665-L896)
+- [predictionEngine.js:691-922](file://backend/services/predictionEngine.js#L691-L922)
 - [orchestratorAgent.js:288-468](file://backend/services/agents/orchestratorAgent.js#L288-L468)
 - [agentFramework.js:345-561](file://backend/services/agents/agentFramework.js#L345-L561)
 - [calibrationService.js:53-82](file://backend/services/calibrationService.js#L53-L82)
@@ -200,19 +214,24 @@ Lambdas --> Matrix["Build score matrix with DC tau"]
 Matrix --> Outcomes["Derive W/D/L probs"]
 Outcomes --> Reweight["Reweight to final outcome totals"]
 Reweight --> TopScores["Pick top-3 scorelines"]
-TopScores --> End(["End"])
+TopScores --> MostLikely["Derive most_likely_score"]
+MostLikely --> End(["End"])
 ```
+
+**Updated** Enhanced with most_likely_score derivation from the score matrix to ensure data consistency and prevent internal inconsistencies.
 
 **Diagram sources**
 - [predictionEngine.js:135-163](file://backend/services/predictionEngine.js#L135-L163)
 - [predictionEngine.js:377-394](file://backend/services/predictionEngine.js#L377-L394)
 - [predictionEngine.js:410-438](file://backend/services/predictionEngine.js#L410-L438)
+- [predictionEngine.js:851-852](file://backend/services/predictionEngine.js#L851-L852)
 
 **Section sources**
 - [predictionEngine.js:67-134](file://backend/services/predictionEngine.js#L67-L134)
 - [predictionEngine.js:135-163](file://backend/services/predictionEngine.js#L135-L163)
 - [predictionEngine.js:377-394](file://backend/services/predictionEngine.js#L377-L394)
 - [predictionEngine.js:410-438](file://backend/services/predictionEngine.js#L410-L438)
+- [predictionEngine.js:851-852](file://backend/services/predictionEngine.js#L851-L852)
 
 ### Adjustment Signals and Log-Pool Blending
 - Signal weights: backbone, H2H, form, intelligence, lineup, and rest-days.
@@ -230,11 +249,6 @@ F["Rest probs"] --> W
 W --> LP["Log-pool blend"]
 LP --> End(["Final outcome probs"])
 ```
-
-**Diagram sources**
-- [predictionEngine.js:92-100](file://backend/services/predictionEngine.js#L92-L100)
-- [predictionEngine.js:214-238](file://backend/services/predictionEngine.js#L214-L238)
-- [predictionEngine.js:809-819](file://backend/services/predictionEngine.js#L809-L819)
 
 **Section sources**
 - [predictionEngine.js:240-362](file://backend/services/predictionEngine.js#L240-L362)
@@ -266,7 +280,7 @@ Normalize --> End(["Calibrated probs"])
 ### Multi-Agent Coordination Workflow
 - AgentSession manages lifecycle: dispatch, conflict detection, negotiation, final output assembly, and persistence.
 - Conflict detection: pairwise comparison of max probability delta; thresholds trigger negotiation.
-- Negotiation: agents challenge each other’s positions; the agent that moves less “wins” and gains a weight boost; the loser’s probability is replaced with their revised output.
+- Negotiation: agents challenge each other's positions; the agent that moves less "wins" and gains a weight boost; the loser's probability is replaced with their revised output.
 - Final synthesis: log-pool blending of agent outputs with adjusted weights, followed by temperature scaling.
 
 ```mermaid
@@ -440,6 +454,8 @@ HS->>HS : ensureH2HData()
 HS->>API : download dataset (once)
 ```
 
+**Updated** Enhanced with comprehensive fallback mechanisms and validation to prevent hallucinations in AI-generated content.
+
 **Diagram sources**
 - [dataService.js:68-133](file://backend/services/dataService.js#L68-L133)
 - [dataService.js:190-265](file://backend/services/dataService.js#L190-L265)
@@ -449,7 +465,7 @@ HS->>API : download dataset (once)
 - [qwenClient.js:53-101](file://backend/services/qwenClient.js#L53-L101)
 
 **Section sources**
-- [dataService.js:495-583](file://backend/services/dataService.js#L495-L583)
+- [dataService.js:495-602](file://backend/services/dataService.js#L495-L602)
 - [lineupService.js:221-362](file://backend/services/lineupService.js#L221-L362)
 - [h2hService.js:272-312](file://backend/services/h2hService.js#L272-L312)
 
@@ -460,13 +476,16 @@ HS->>API : download dataset (once)
 ```mermaid
 flowchart TD
 Start(["Match Completed"]) --> LoadPred["Load latest prediction"]
-LoadPred --> Metrics["Compute Brier, correctness, points"]
+LoadPred --> Points["Compute points using most_likely_score"]
+Points --> Metrics["Compute Brier, correctness, points"]
 Metrics --> InsertMP["Insert into model_performance"]
 InsertMP --> Threshold{"Completed >= 20 and %10==0?"}
 Threshold --> |Yes| Refit["refitTemperature() + refitDcRho()"]
 Threshold --> |No| End(["Done"])
 Refit --> End
 ```
+
+**Updated** Enhanced with most_likely_score-based point calculation to ensure data consistency and prevent outcome mismatches.
 
 **Diagram sources**
 - [analysisService.js:76-218](file://backend/services/analysisService.js#L76-L218)
@@ -475,6 +494,19 @@ Refit --> End
 **Section sources**
 - [analysisService.js:76-218](file://backend/services/analysisService.js#L76-L218)
 - [calibrationService.js:53-129](file://backend/services/calibrationService.js#L53-L129)
+
+### Enhanced Validation and Fallback Systems
+**New Section** The prediction engine now includes comprehensive validation and fallback mechanisms to ensure data integrity and system reliability:
+
+- **Post-processing Validation**: AI-generated insights undergo validation to prevent false information and hallucinations by cross-referencing with validated injury lists.
+- **Multi-layered Fallbacks**: All LLM components include fallback mechanisms - from JSON parsing retries to uniform priors when LLM calls fail.
+- **Anti-hallucination Guards**: Web intelligence parsing includes strict validation to prevent LLM confabulations about player injuries or availability.
+- **Data Consistency Checks**: Most_likely_score field is derived from the score matrix to prevent internal inconsistencies between outcome probabilities and score predictions.
+
+**Section sources**
+- [predictionEngine.js:606-661](file://backend/services/predictionEngine.js#L606-L661)
+- [agentFramework.js:235-334](file://backend/services/agents/agentFramework.js#L235-L334)
+- [dataService.js:300-399](file://backend/services/dataService.js#L300-L399)
 
 ## Dependency Analysis
 - predictionEngine depends on dataService, h2hService, lineupService, and qwenClient for multi-agent mode.
@@ -521,6 +553,9 @@ AS --> DB
 - Numerical stability: log-space computations and renormalization prevent under/overflow.
 - Early exits: skip agents when data is unavailable or insufficient (e.g., H2H with <2 meetings).
 - Database tuning: pragmas and migrations optimized for concurrent access and schema evolution.
+- **Enhanced Reliability**: Comprehensive fallback mechanisms ensure system continues operating even when individual components fail.
+
+**Updated** Added enhanced reliability considerations for the new fallback and validation systems.
 
 [No sources needed since this section provides general guidance]
 
@@ -529,6 +564,9 @@ AS --> DB
 - JSON parsing failures: agentFramework retries once and falls back to uniform priors; logs parse errors.
 - Incomplete or missing data: agents return near-neutral outputs; orchestrator skips unavailable agents.
 - Calibration not applied: if temperature remains at default 1.0, verify model_config and refit triggers.
+- **Enhanced Error Handling**: Post-processing validation removes hallucinated content from AI outputs; fallback mechanisms ensure predictions are always generated even when LLM components fail.
+
+**Updated** Added troubleshooting guidance for the new validation and fallback systems.
 
 **Section sources**
 - [qwenClient.js:60-101](file://backend/services/qwenClient.js#L60-L101)
@@ -537,7 +575,9 @@ AS --> DB
 - [analysisService.js:202-211](file://backend/services/analysisService.js#L202-L211)
 
 ## Conclusion
-The prediction engine combines a robust Dixon-Coles Poisson backbone with adaptive, multi-source signals and a principled multi-agent negotiation framework. Temperature scaling ensures well-calibrated probabilities, while comprehensive session logging enables transparency and auditability. The system gracefully handles missing data and integrates external sources to maintain reliable outputs across diverse scenarios.
+The prediction engine combines a robust Dixon-Coles Poisson backbone with adaptive, multi-source signals and a principled multi-agent negotiation framework. Temperature scaling ensures well-calibrated probabilities, while comprehensive session logging enables transparency and auditability. The system gracefully handles missing data and integrates external sources to maintain reliable outputs across diverse scenarios. **Enhanced validation and fallback mechanisms** ensure data integrity and system reliability, preventing false information and maintaining operational continuity even when AI features encounter issues.
+
+**Updated** Enhanced conclusion to reflect the improved validation, fallback systems, and overall reliability improvements.
 
 ## Appendices
 
@@ -554,7 +594,7 @@ The prediction engine combines a robust Dixon-Coles Poisson backbone with adapti
 - [agentFramework.js:103-109](file://backend/services/agents/agentFramework.js#L103-L109)
 
 ### Methodology Tracking and Factors
-- Factors list captures each signal’s impact, favor direction, and weight percentage.
+- Factors list captures each signal's impact, favor direction, and weight percentage.
 - Methodology string summarizes the final blend composition.
 - Confidence tiers derived from maximum outcome probability.
 
@@ -566,8 +606,26 @@ The prediction engine combines a robust Dixon-Coles Poisson backbone with adapti
 ### Fallback Mechanisms
 - When AI features disabled: feature flags control multi-agent enablement; single-agent path computes backbone and signals without LLM orchestration.
 - Data fallbacks: web scraping for form/H2H/intel; default synthetic form generation; static H2H estimates.
+- **Enhanced LLM Fallbacks**: Multi-layered fallback mechanisms including JSON parsing retries, uniform priors, and fallback prompts when LLM components fail.
+
+**Updated** Enhanced fallback mechanisms section to reflect comprehensive LLM fallback systems.
 
 **Section sources**
 - [predictionEngine.js:55-61](file://backend/services/predictionEngine.js#L55-L61)
 - [dataService.js:117-185](file://backend/services/dataService.js#L117-L185)
 - [h2hService.js:235-265](file://backend/services/h2hService.js#L235-L265)
+- [agentFramework.js:235-334](file://backend/services/agents/agentFramework.js#L235-L334)
+
+### Data Validation and Integrity
+**New Section** The prediction engine implements comprehensive data validation and integrity checks:
+
+- **Most Likely Score Derivation**: Outcome probabilities and score predictions are derived from the same score matrix to prevent internal inconsistencies.
+- **Post-processing Validation**: AI-generated insights are validated against validated injury lists to prevent hallucinations about player availability.
+- **Anti-hallucination Guards**: Web intelligence parsing validates player names against source text context to prevent LLM confabulations.
+- **Consistency Checking**: Point calculation uses most_likely_score to ensure data consistency between predictions and actual outcomes.
+
+**Section sources**
+- [predictionEngine.js:396-438](file://backend/services/predictionEngine.js#L396-L438)
+- [predictionEngine.js:606-661](file://backend/services/predictionEngine.js#L606-L661)
+- [dataService.js:300-399](file://backend/services/dataService.js#L300-L399)
+- [analysisService.js:37-57](file://backend/services/analysisService.js#L37-L57)

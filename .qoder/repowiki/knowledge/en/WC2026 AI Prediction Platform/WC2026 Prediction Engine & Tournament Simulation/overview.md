@@ -1,1 +1,0 @@
-A Node.js backend providing a multi-agent AI prediction engine for World Cup 2026 matches, tournament bracket simulation, and live result synchronization.

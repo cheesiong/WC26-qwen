@@ -3,11 +3,11 @@ schema_version: 1
 locale: en-US
 branch: master
 nodes_managed: true
-exported_at: "2026-06-27T12:50:02Z"
+exported_at: "2026-06-28T13:22:12Z"
 modules:
     "":
-        dir_name: WC2026 AI Prediction Platform
-        title: WC2026 AI Prediction Platform
+        dir_name: WC2026 Multi-Agent Prediction Platform
+        title: WC2026 Multi-Agent Prediction Platform
         scope:
             - README.md
             - SETUP.md
@@ -43,15 +43,35 @@ modules:
         depends_on: []
         related_to: []
     backend:
-        dir_name: WC2026 Prediction Engine & Tournament Simulation
-        title: WC2026 Prediction Engine & Tournament Simulation
+        dir_name: WC2026 Multi-Agent Prediction Orchestrator
+        title: WC2026 Multi-Agent Prediction Orchestrator
         scope:
             - backend/
         source_files: []
-        children: []
+        children:
+            - backend/agent_framework
+            - backend/tuning_scripts
         depends_on: []
         related_to:
             - path: frontend
+    backend/agent_framework:
+        dir_name: Multi-Agent Prediction Framework
+        title: Multi-Agent Prediction Framework
+        scope:
+            - backend/services/agents/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to: []
+    backend/tuning_scripts:
+        dir_name: Football Prediction Model Tuning & Backtesting
+        title: Football Prediction Model Tuning & Backtesting
+        scope:
+            - backend/scripts/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to: []
     build_system:
         dir_name: Monorepo Build & Deployment with Docker Compose and ECS Automation
         title: Monorepo Build & Deployment with Docker Compose and ECS Automation
@@ -125,8 +145,8 @@ modules:
         depends_on: []
         related_to: []
     frontend:
-        dir_name: World Cup 2026 Prediction & Visualization Frontend
-        title: World Cup 2026 Prediction & Visualization Frontend
+        dir_name: World Cup 2026 Prediction Frontend
+        title: World Cup 2026 Prediction Frontend
         scope:
             - frontend/
         source_files: []

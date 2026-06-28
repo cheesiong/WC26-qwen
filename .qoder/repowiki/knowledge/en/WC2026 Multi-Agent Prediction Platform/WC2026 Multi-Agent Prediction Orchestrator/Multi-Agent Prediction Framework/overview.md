@@ -1,0 +1,1 @@
+Orchestrates a two-round debate among specialized LLM agents to generate calibrated football match predictions through conflict resolution and weighted probability blending.

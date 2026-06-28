@@ -109,166 +109,166 @@ The schema supports a prediction pipeline with optional multi-agent orchestratio
 ```mermaid
 erDiagram
 TEAMS {
-text id PK
-text name
-text flag
-text group_code
-text confederation
-int fifa_rank
-float fifa_points
-float elo
-float avg_scored
-float avg_conceded
-int wc_appearances
-text last_wc_round
-int gs_played
-int gs_won
-int gs_drawn
-int gs_lost
-int gs_gf
-int gs_ga
-int gs_pts
-int eliminated
-text updated_at
+  text id PK
+  text name
+  text flag
+  text group_code
+  text confederation
+  int fifa_rank
+  float fifa_points
+  float elo
+  float avg_scored
+  float avg_conceded
+  int wc_appearances
+  text last_wc_round
+  int gs_played
+  int gs_won
+  int gs_drawn
+  int gs_lost
+  int gs_gf
+  int gs_ga
+  int gs_pts
+  int eliminated
+  text updated_at
 }
 MATCHES {
-text id PK
-text stage
-text group_code
-int match_number
-text home_team FK
-text away_team FK
-text scheduled_date
-text scheduled_time
-text venue
-text status
-int home_score
-int away_score
-int home_score_pens
-int away_score_pens
-text winner FK
-text created_at
-text completed_at
+  text id PK
+  text stage
+  text group_code
+  int match_number
+  text home_team FK
+  text away_team FK
+  text scheduled_date
+  text scheduled_time
+  text venue
+  text status
+  int home_score
+  int away_score
+  int home_score_pens
+  int away_score_pens
+  text winner FK
+  text created_at
+  text completed_at
 }
 PREDICTIONS {
-int id PK
-text match_id FK
-text generated_at
-float prob_home
-float prob_draw
-float prob_away
-float expected_score_home
-float expected_score_away
-text most_likely_score
-text top_scores
-text confidence
-text factors
-text web_intel
-text insight
-text methodology
-text actual_outcome
-int was_correct
-float brier_score
-int upset
-float lambda_home
-float lambda_away
-text agent_session_id
+  int id PK
+  text match_id FK
+  text generated_at
+  float prob_home
+  float prob_draw
+  float prob_away
+  float expected_score_home
+  float expected_score_away
+  text most_likely_score
+  text top_scores
+  text confidence
+  text factors
+  text web_intel
+  text insight
+  text methodology
+  text actual_outcome
+  int was_correct
+  float brier_score
+  int upset
+  float lambda_home
+  float lambda_away
+  text agent_session_id
 }
 MODEL_PERFORMANCE {
-int id PK
-text match_id FK
-text stage
-text predicted_outcome
-text actual_outcome
-int was_correct
-float brier_score
-float prob_predicted
-text confidence
-int upset
-text analysis_notes
-int points
-text created_at
+  int id PK
+  text match_id FK
+  text stage
+  text predicted_outcome
+  text actual_outcome
+  int was_correct
+  float brier_score
+  float prob_predicted
+  text confidence
+  int upset
+  text analysis_notes
+  int points
+  text created_at
 }
 BRACKET_SLOTS {
-text match_id PK FK
-text slot_home
-text slot_away
-text filled_at
+  text match_id PK
+  text slot_home
+  text slot_away
+  text filled_at
 }
 ELO_HISTORY {
-int id PK
-text team_id FK
-text match_id FK
-float elo_before
-float elo_after
-text opponent_id FK
-text result
-text stage
-text recorded_at
+  int id PK
+  text team_id FK
+  text match_id FK
+  float elo_before
+  float elo_after
+  text opponent_id FK
+  text result
+  text stage
+  text recorded_at
 }
 SUSPENSIONS {
-int id PK
-text team_id FK
-text player_name
-text reason
-int yellow_cards
-text suspended_for_match_id
-text source
-text notes
-text created_at
-text updated_at
+  int id PK
+  text team_id FK
+  text player_name
+  text reason
+  int yellow_cards
+  text suspended_for_match_id
+  text source
+  text notes
+  text created_at
+  text updated_at
 }
 WEB_INTEL_CACHE {
-int id PK
-text team_id
-text match_id
-text intel_type
-text content
-text source_url
-text fetched_at
-text expires_at
+  int id PK
+  text team_id
+  text match_id
+  text intel_type
+  text content
+  text source_url
+  text fetched_at
+  text expires_at
 }
 MODEL_CONFIG {
-text key PK
-float value
-text description
-text updated_at
+  text key PK
+  float value
+  text description
+  text updated_at
 }
 AGENT_SESSIONS {
-text id PK
-text match_id FK
-text agents_used
-int rounds
-int conflicts_detected
-int conflicts_resolved
-text synthesis_method
-int wall_time_ms
-text created_at
+  text id PK
+  text match_id FK
+  text agents_used
+  int rounds
+  int conflicts_detected
+  int conflicts_resolved
+  text synthesis_method
+  int wall_time_ms
+  text created_at
 }
 AGENT_MESSAGES {
-int id PK
-text session_id FK
-int round
-text agent
-text role
-text probability
-float confidence
-text evidence
-text raw_response
-int latency_ms
-text created_at
+  int id PK
+  text session_id FK
+  int round
+  text agent
+  text role
+  text probability
+  float confidence
+  text evidence
+  text raw_response
+  int latency_ms
+  text created_at
 }
 AGENT_CONFLICTS {
-int id PK
-text session_id FK
-text agent_a
-text agent_b
-float delta
-int round_detected
-text resolution
-text winner
-text resolution_reasoning
-text created_at
+  int id PK
+  text session_id FK
+  text agent_a
+  text agent_b
+  float delta
+  int round_detected
+  text resolution
+  text winner
+  text resolution_reasoning
+  text created_at
 }
 TEAMS ||--o{ MATCHES : "home_team/away_team"
 TEAMS ||--o{ ELO_HISTORY : "team_id"

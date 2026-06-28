@@ -1,3 +1,0 @@
-- **Local Development**: The `start.sh` script acts as the primary orchestrator, concurrently booting the backend (port 6173) and frontend (port 6001) while managing dependency installation and database seeding.
-- **Production Deployment**: `docker-compose.yml` defines the service boundary, exposing only the frontend Nginx container to host ports 80/443 while keeping the backend on an internal Docker network, with the frontend proxying API requests via the `BACKEND_URL` environment variable.
-- **CI/CD Workflow**: `deploy.sh` automates the release process by syncing source code to Alibaba Cloud ECS via `rsync` and triggering a remote `docker compose up --build`, ensuring consistent environment provisioning across development and production.

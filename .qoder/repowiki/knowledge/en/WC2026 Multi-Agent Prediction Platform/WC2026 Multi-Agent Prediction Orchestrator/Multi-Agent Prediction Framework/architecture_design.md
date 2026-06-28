@@ -1,0 +1,5 @@
+- Core Abstraction: `agentFramework.js` defines the `Agent` class for LLM interaction (with JSON sanitization and retry logic) and `AgentSession` for managing the multi-round lifecycle (dispatch, conflict detection, negotiation, and DB persistence).
+- Orchestration Layer: `orchestratorAgent.js` serves as the entry point (`runMultiAgentPrediction`), coordinating parallel data fetching, dynamic agent task assembly, and final probability synthesis via log-pooling and temperature scaling.
+- Specialist Agents: Domain-specific modules (`statisticalAgent`, `h2hAgent`, `formAgent`, `intelAgent`, `lineupAgent`) follow a uniform pattern: exporting a singleton `Agent` instance, a `fetchDomainData` function, and a `buildPrompt` function.
+- Dependency Direction: Specialists depend on `agentFramework` for the base class and `qwenClient` for LLM access; the Orchestrator depends on all specialists and `agentFramework` for session management.
+- Persistence: `AgentSession` handles direct SQL insertion into `agent_sessions`, `agent_messages`, and `agent_conflicts` tables via `database/db`.

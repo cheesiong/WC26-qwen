@@ -1,0 +1,3 @@
+- `bash start.sh`: Unified local development entry point that installs dependencies, seeds the SQLite database, and concurrently launches both backend and frontend dev servers with health-check synchronization.
+- `bash deploy.sh`: One-command production deployment that rsyncs code to ECS, rebuilds Docker containers, and verifies service health across both modules.
+- `bash setup-ecs.sh`: Automated infrastructure provisioning script that configures VPC, security groups, and Docker on a fresh Alibaba Cloud ECS instance before initial deployment.

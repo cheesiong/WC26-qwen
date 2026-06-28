@@ -1,6 +1,0 @@
-- **Entry Point**: `server.js` exposes a REST API using Express, serving both JSON endpoints and the static React frontend.
-- **Core Logic**: `services/predictionEngine.js` implements a Dixon-Coles bivariate Poisson backbone for scoreline probabilities, blended with adjustment signals (form, H2H, intel) via log-pooling.
-- **Multi-Agent System**: `services/agents/` contains an orchestrator and specialist agents (Statistical, Form, H2H, Intel, Lineup) that use Qwen LLMs to interpret domain data and negotiate conflicting probabilities through a two-round framework (`agentFramework.js`).
-- **Tournament Logic**: `services/bracketService.js` handles group stage progression, third-place tie-breaking, and knockout bracket auto-filling using official FIFA 2026 rules.
-- **Data Layer**: `database/db.js` manages a SQLite database (`node-sqlite3-wasm`) with schema migrations and seeding (`seed.js`).
-- **External Integrations**: `services/dataService.js` syncs live results from football-data.org and scrapes news for injury/intel data; `services/qwenClient.js` interfaces with Alibaba Cloud DashScope for LLM calls.

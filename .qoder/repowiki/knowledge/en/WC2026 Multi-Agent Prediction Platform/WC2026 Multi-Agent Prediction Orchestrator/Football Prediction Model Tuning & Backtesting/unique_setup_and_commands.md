@@ -1,0 +1,3 @@
+- **Backtesting**: `node backend/scripts/backtest.js [baseline|v2|both] [--since=1990]`
+- **Hyperparameter Tuning**: `node backend/scripts/tuneV2.js` (runs a grid search over learning rate, regularization, home advantage, and DC rho).
+- **Rating Re-learning**: `node backend/scripts/relearnR1.js` (resets team ratings to FIFA priors and replays Round 1 matches).

@@ -1,1 +1,0 @@
-Docker Compose is used as the shared runtime orchestrator for both the Node.js backend and React frontend services in production, enabling isolated networking and unified lifecycle management.

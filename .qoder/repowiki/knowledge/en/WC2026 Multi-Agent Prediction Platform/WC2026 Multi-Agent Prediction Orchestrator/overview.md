@@ -1,0 +1,1 @@
+Orchestrates a conflict-resolving multi-agent system that blends statistical, historical, and real-time intelligence into calibrated match outcome probabilities.

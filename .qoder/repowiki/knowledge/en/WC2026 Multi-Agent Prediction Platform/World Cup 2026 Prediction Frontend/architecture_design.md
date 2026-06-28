@@ -1,4 +1,4 @@
-- **Framework & Routing**: Built with Vite and React 18, using `react-router-dom` for client-side routing across pages like Dashboard, Groups, MatchDetail, and Tournament.
+- **Framework & Routing**: Built with Vite 5 and React 18, using `react-router-dom` for client-side routing across pages like Dashboard, Groups, MatchDetail, and Tournament.
 - **State & Context**: Global state for Theme (light/dark) and Language (en/zh) is managed via React Context (`ThemeContext`, `LanguageContext`), persisting preferences in `localStorage`.
 - **Data Layer**: A centralized API client (`src/api/client.js`) wraps `axios` to interact with the backend, exposing typed functions for matches, groups, and predictions.
 - **UI Composition**: The UI follows a component-based architecture with reusable presentational components (`MatchCard`, `PredictionBar`, `FlagImage`) and page-level containers. It features a custom "Tang Dynasty" aesthetic implemented via SVG ornaments (`TangOrnaments.jsx`) and Tailwind CSS.

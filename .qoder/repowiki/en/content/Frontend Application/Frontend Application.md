@@ -26,19 +26,30 @@
 - [index.css](file://frontend/src/index.css)
 </cite>
 
+## Update Summary
+**Changes Made**
+- Updated Predictions component documentation to reflect enhanced prediction outcome calculation
+- Added detailed explanation of most_likely_score field derivation for consistent outcome calculations
+- Updated MatchCard component documentation to show prediction outcome consistency
+- Enhanced prediction component architecture section with new calculation methodology
+- Added new section on prediction consistency and discrepancy elimination
+
 ## Table of Contents
 1. [Introduction](#introduction)
 2. [Project Structure](#project-structure)
 3. [Core Components](#core-components)
 4. [Architecture Overview](#architecture-overview)
 5. [Detailed Component Analysis](#detailed-component-analysis)
-6. [Dependency Analysis](#dependency-analysis)
-7. [Performance Considerations](#performance-considerations)
-8. [Troubleshooting Guide](#troubleshooting-guide)
-9. [Conclusion](#conclusion)
+6. [Enhanced Prediction Component Architecture](#enhanced-prediction-component-architecture)
+7. [Dependency Analysis](#dependency-analysis)
+8. [Performance Considerations](#performance-considerations)
+9. [Troubleshooting Guide](#troubleshooting-guide)
+10. [Conclusion](#conclusion)
 
 ## Introduction
 This document describes the React frontend application architecture for the World Cup 2026 predictions platform. It explains the component-based structure, page organization, navigation patterns, reusable UI components, state management via context providers, API client implementation, data fetching strategies, real-time update mechanisms, styling system using Tailwind CSS, responsive design patterns, accessibility features, internationalization, and theme switching functionality.
+
+**Updated** Enhanced with critical improvements to prediction component consistency and outcome calculation methodology.
 
 ## Project Structure
 The frontend is organized around a component-driven architecture with clear separation of concerns:
@@ -349,6 +360,8 @@ MD-->>U : Render detailed view
 - Includes scoring methodology modal and statistics
 - Filters by status and group with date grouping
 
+**Updated** Enhanced with critical prediction outcome calculation consistency improvements
+
 **Section sources**
 - [Predictions.jsx:1-514](file://frontend/src/pages/Predictions.jsx#L1-L514)
 
@@ -379,6 +392,72 @@ MD-->>U : Render detailed view
 - [TangOrnaments.jsx](file://frontend/src/components/TangOrnaments.jsx)
 - [time.js](file://frontend/src/utils/time.js)
 - [chartColors.js](file://frontend/src/utils/chartColors.js)
+
+## Enhanced Prediction Component Architecture
+
+**New Section** This section documents the critical enhancement to prediction component consistency and outcome calculation methodology.
+
+### Most Likely Score Derivation System
+The prediction system now implements a unified outcome calculation approach that derives results consistently from the most_likely_score field, eliminating discrepancies between card and detail page predictions.
+
+#### Prediction Outcome Calculation Logic
+The system employs a two-tier calculation approach:
+
+1. **Primary Method**: Direct score parsing from most_likely_score
+   - Extracts score from format "H-A" (e.g., "2-1")
+   - Compares home and away goals numerically
+   - Returns HOME/AWAY/DRAW based on direct comparison
+
+2. **Fallback Method**: Probability-based calculation
+   - Used when most_likely_score is unavailable or malformed
+   - Compares prob_home vs prob_away values
+   - Falls back to draw when probabilities are equal
+
+#### Implementation Details
+
+**MatchCard Component Enhancement**
+- Prediction outcome calculation now uses most_likely_score for consistency
+- Score parsing converts "H-A" format to numerical comparison
+- Visual indicators highlight team leads based on predicted outcomes
+
+**Predictions Component Enhancement**
+- Unified prediction outcome calculation across all match cards
+- Consistent scoring methodology eliminates calculation discrepancies
+- Improved accuracy in prediction correctness validation
+
+**MatchDetail Component Enhancement**
+- Prediction outcome derived from most_likely_score for final validation
+- Celebration triggers activated when predictions match actual outcomes
+- Enhanced prediction history panel with consistent scoring
+
+```mermaid
+flowchart TD
+ScoreInput["most_likely_score Input"] --> CheckEmpty{"Is score empty?"}
+CheckEmpty --> |Yes| ProbCalc["Probability-based calculation"]
+CheckEmpty --> |No| ParseScore["Parse 'H-A' format"]
+ParseScore --> ValidateNum{"Valid numbers?"}
+ValidateNum --> |No| ProbCalc
+ValidateNum --> |Yes| Compare["Compare H vs A"]
+Compare --> HomeWin{"H > A?"}
+HomeWin --> |Yes| Home["Return 'home'"]
+HomeWin --> |No| AwayWin{"H < A?"}
+AwayWin --> |Yes| Away["Return 'away'"]
+AwayWin --> |No| Draw["Return 'draw'"]
+ProbCalc --> ProbCompare["Compare prob_home vs prob_away"]
+ProbCompare --> ProbHome["Return 'home' if prob_home > prob_away"]
+ProbCompare --> ProbAway["Return 'away' if prob_away > prob_home"]
+ProbCompare --> ProbDraw["Return 'draw' if equal"]
+```
+
+**Diagram sources**
+- [Predictions.jsx:104-113](file://frontend/src/pages/Predictions.jsx#L104-L113)
+- [MatchCard.jsx:30-38](file://frontend/src/components/MatchCard.jsx#L30-L38)
+- [MatchDetail.jsx:616-623](file://frontend/src/pages/MatchDetail.jsx#L616-L623)
+
+**Section sources**
+- [Predictions.jsx:104-113](file://frontend/src/pages/Predictions.jsx#L104-L113)
+- [MatchCard.jsx:30-38](file://frontend/src/components/MatchCard.jsx#L30-L38)
+- [MatchDetail.jsx:616-623](file://frontend/src/pages/MatchDetail.jsx#L616-L623)
 
 ## Dependency Analysis
 The application exhibits low coupling and high cohesion:
@@ -465,6 +544,7 @@ TD --> TM
 - Local storage avoids repeated server calls for preferences
 - Tailwind JIT compilation optimizes CSS delivery
 - Responsive design minimizes layout thrashing on small screens
+- **Updated** Enhanced prediction calculation caching for improved performance
 
 ## Troubleshooting Guide
 - Hydration mismatch: Ensure server-side rendering aligns with client expectations; the entry point checks for pre-rendered content before hydrating
@@ -472,6 +552,7 @@ TD --> TM
 - Language switching: Verify localStorage persistence and context propagation
 - Theme persistence: Confirm dark mode class application and localStorage updates
 - Live updates: TeamDetail polls for live matches; verify intervals are cleared on unmount
+- **Updated** Prediction calculation issues: Verify most_likely_score format and numerical validation in prediction components
 
 **Section sources**
 - [main.jsx:16-21](file://frontend/src/main.jsx#L16-L21)
@@ -483,3 +564,5 @@ TD --> TM
 
 ## Conclusion
 The frontend application demonstrates a clean, scalable React architecture with strong separation of concerns. It leverages context providers for global state, a centralized API client for data access, and a robust set of reusable components. The design emphasizes responsiveness, accessibility, and internationalization while maintaining performance through efficient data fetching and rendering strategies.
+
+**Updated** Recent enhancements to the prediction component architecture ensure consistent outcome calculations across all pages, eliminating discrepancies between card and detail page predictions through the implementation of most_likely_score field derivation methodology. This improvement significantly enhances the accuracy and reliability of the prediction system while maintaining the application's clean architectural principles.

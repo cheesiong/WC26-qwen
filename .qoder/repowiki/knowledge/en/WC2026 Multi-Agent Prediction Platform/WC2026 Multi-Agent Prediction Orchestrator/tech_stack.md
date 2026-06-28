@@ -1,0 +1,1 @@
+Node.js/Express backend with SQLite (node-sqlite3-wasm) for persistent state; Qwen LLMs (qwen-plus/turbo) via shared client for agent reasoning; node-cron for scheduled prediction/sync jobs.

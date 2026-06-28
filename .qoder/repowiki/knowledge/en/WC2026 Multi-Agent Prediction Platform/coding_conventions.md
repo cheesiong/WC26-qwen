@@ -1,0 +1,2 @@
+- Both child modules utilize npm-based dependency management and script execution (e.g., `npm install`, `npm run dev`, `npm test`).
+- Environment configuration is standardized via `.env` files managed at the root level, with `.env.example` templates provided for consistent setup across development and production.

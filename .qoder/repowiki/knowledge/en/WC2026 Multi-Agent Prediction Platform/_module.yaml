@@ -1,6 +1,6 @@
 schema_version: 1
 module_path: ""
-title: WC2026 AI Prediction Platform
+title: WC2026 Multi-Agent Prediction Platform
 scope:
     - README.md
     - SETUP.md
