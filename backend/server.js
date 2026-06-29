@@ -658,6 +658,13 @@ async function runLineupCron() {
       const result = await fetchLineup(m.id);
       if (result?.available) {
         console.log(`[cron] lineup fetched for ${m.id} (${result.source})`);
+        // Re-run prediction to incorporate lineup signal
+        try {
+          await predict(m.id, true);
+          console.log(`[cron] prediction updated for ${m.id} with lineup`);
+        } catch (e) {
+          console.error(`[cron] re-predict ${m.id} failed:`, e.message);
+        }
       }
     } catch (e) {
       console.error(`[cron] lineup ${m.id} failed:`, e.message);
