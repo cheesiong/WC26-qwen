@@ -4,13 +4,12 @@ title: Error Handling — Try/Catch with HTTP Status Codes and Console Logging
 scope: []
 source_files:
     - backend/server.js
-    - backend/services/predictionEngine.js
-    - backend/services/dataService.js
     - backend/services/qwenClient.js
-    - backend/services/analysisService.js
-    - backend/database/db.js
+    - backend/services/dataService.js
+    - backend/services/predictionEngine.js
     - frontend/src/api/client.js
     - frontend/src/pages/Dashboard.jsx
     - frontend/src/pages/MatchDetail.jsx
+    - backend/database/db.js
 depends_on: []
 related_to: []

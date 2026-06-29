@@ -1,1 +1,0 @@
-Uses Qwen LLMs (qwen-turbo for pattern recognition, qwen-plus for reasoning) via `qwenClient`; SQLite for persistent storage of agent sessions and conflicts.

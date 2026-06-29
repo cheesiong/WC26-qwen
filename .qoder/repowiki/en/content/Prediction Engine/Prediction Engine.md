@@ -3,29 +3,18 @@
 <cite>
 **Referenced Files in This Document**
 - [predictionEngine.js](file://backend/services/predictionEngine.js)
-- [calibrationService.js](file://backend/services/calibrationService.js)
 - [agentFramework.js](file://backend/services/agents/agentFramework.js)
-- [orchestratorAgent.js](file://backend/services/agents/orchestratorAgent.js)
 - [statisticalAgent.js](file://backend/services/agents/statisticalAgent.js)
 - [formAgent.js](file://backend/services/agents/formAgent.js)
 - [h2hAgent.js](file://backend/services/agents/h2hAgent.js)
 - [intelAgent.js](file://backend/services/agents/intelAgent.js)
 - [lineupAgent.js](file://backend/services/agents/lineupAgent.js)
-- [qwenClient.js](file://backend/services/qwenClient.js)
-- [dataService.js](file://backend/services/dataService.js)
-- [lineupService.js](file://backend/services/lineupService.js)
-- [h2hService.js](file://backend/services/h2hService.js)
-- [analysisService.js](file://backend/services/analysisService.js)
+- [orchestratorAgent.js](file://backend/services/agents/orchestratorAgent.js)
+- [calibrationService.js](file://backend/services/calibrationService.js)
 - [db.js](file://backend/database/db.js)
+- [README.md](file://README.md)
+- [SPEC-PREDICT.md](file://specs/SPEC-PREDICT.md)
 </cite>
-
-## Update Summary
-**Changes Made**
-- Enhanced data consistency through most_likely_score field derivation for outcome validation
-- Implemented robust post-processing validation to prevent false information in insights
-- Added comprehensive fallback mechanisms for LLM failures across all components
-- Improved validation of web intelligence parsing to prevent hallucinations
-- Strengthened error handling and data integrity checks throughout the prediction pipeline
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -40,285 +29,208 @@
 10. [Appendices](#appendices)
 
 ## Introduction
-This document describes the prediction engine system powering match outcome forecasts for the 2026 FIFA World Cup. It explains the Dixon-Coles bivariate Poisson backbone, temperature scaling for probability calibration, and ensemble prediction blending. It documents the multi-agent coordination workflow, conflict detection and negotiation protocols, and the agent framework design. It also covers session management, audit trails, and methodology tracking, along with enhanced fallback mechanisms when AI features are disabled and integration with external data sources.
-
-**Updated** Enhanced with improved data consistency, robust validation mechanisms, and comprehensive fallback systems to ensure reliable predictions even when external data sources fail.
+This document explains the World Cup 2026 Prediction Engine, focusing on the Dixon-Coles bivariate Poisson backbone, λ (lambda) attack/defense parameters, ELO ratings integration, and α/β ratings initialization. It documents the log-pool probability blending technique for combining multiple prediction sources, the multi-agent system with five specialized agents (Statistical, Form, H2H, Intel, and Lineup), the agent negotiation protocol with conflict detection thresholds, rebuttal rounds, and weight adjustment mechanisms. It also covers the single-model fallback system, calibration via temperature scaling and Dixon-Coles ρ refitting, and model accuracy tracking and performance monitoring.
 
 ## Project Structure
-The prediction engine spans several backend services:
-- Core prediction logic and blending: predictionEngine.js
-- Calibration and tuning: calibrationService.js
-- Multi-agent orchestration and agents: agentFramework.js, orchestratorAgent.js, and specialized agents
-- Data acquisition and caching: dataService.js, lineupService.js, h2hService.js
-- LLM client: qwenClient.js
-- Analytics and learning: analysisService.js
-- Database schema and migrations: db.js
+The prediction engine spans backend services, agent modules, and database schema:
+- Prediction backbone and blending: [predictionEngine.js](file://backend/services/predictionEngine.js)
+- Multi-agent framework and negotiation: [agentFramework.js](file://backend/services/agents/agentFramework.js), [orchestratorAgent.js](file://backend/services/agents/orchestratorAgent.js)
+- Specialized agents: [statisticalAgent.js](file://backend/services/agents/statisticalAgent.js), [formAgent.js](file://backend/services/agents/formAgent.js), [h2hAgent.js](file://backend/services/agents/h2hAgent.js), [intelAgent.js](file://backend/services/agents/intelAgent.js), [lineupAgent.js](file://backend/services/agents/lineupAgent.js)
+- Calibration and model config: [calibrationService.js](file://backend/services/calibrationService.js), [db.js](file://backend/database/db.js)
+- Product and feature context: [README.md](file://README.md), [SPEC-PREDICT.md](file://specs/SPEC-PREDICT.md)
 
 ```mermaid
 graph TB
-subgraph "Prediction Core"
+subgraph "Backbone"
 PE["predictionEngine.js"]
+DC["Dixon-Coles Matrix<br/>λ-home/λ-away"]
+LP["Log-Pool Blending"]
+end
+subgraph "Agents"
+OF["agentFramework.js"]
+ORCH["orchestratorAgent.js"]
+SA["StatisticalAgent"]
+FA["FormAgent"]
+HA["H2HAgent"]
+IA["IntelAgent"]
+LA["LineupAgent"]
+end
+subgraph "Calibration"
 CS["calibrationService.js"]
+CFG["model_config (DB)"]
 end
-subgraph "Multi-Agent System"
-AF["agentFramework.js"]
-OA["orchestratorAgent.js"]
-SA["statisticalAgent.js"]
-FA["formAgent.js"]
-HA["h2hAgent.js"]
-IA["intelAgent.js"]
-LA["lineupAgent.js"]
-end
-subgraph "Data Services"
-DS["dataService.js"]
-LS["lineupService.js"]
-HS["h2hService.js"]
-end
-subgraph "Infrastructure"
-QC["qwenClient.js"]
-DB["db.js"]
-AS["analysisService.js"]
-end
-PE --> DS
-PE --> HS
-PE --> LS
-PE --> CS
-OA --> AF
-OA --> SA
-OA --> FA
-OA --> HA
-OA --> IA
-OA --> LA
-AF --> QC
-OA --> QC
-DS --> QC
-CS --> DB
-PE --> DB
-OA --> DB
-AF --> DB
-AS --> DB
-FA --> DB
-HA --> DB
-IA --> DB
-LA --> DB
-LS --> DB
-HS --> DB
-AS --> DB
+PE --> DC
+PE --> LP
+ORCH --> SA
+ORCH --> FA
+ORCH --> HA
+ORCH --> IA
+ORCH --> LA
+ORCH --> OF
+CS --> CFG
+PE --> CFG
 ```
 
 **Diagram sources**
-- [predictionEngine.js:1-1046](file://backend/services/predictionEngine.js#L1-L1046)
+- [predictionEngine.js:135-163](file://backend/services/predictionEngine.js#L135-L163)
+- [agentFramework.js:1-50](file://backend/services/agents/agentFramework.js#L1-L50)
+- [orchestratorAgent.js:309-502](file://backend/services/agents/orchestratorAgent.js#L309-L502)
 - [calibrationService.js:1-132](file://backend/services/calibrationService.js#L1-L132)
-- [agentFramework.js:1-576](file://backend/services/agents/agentFramework.js#L1-L576)
-- [orchestratorAgent.js:1-471](file://backend/services/agents/orchestratorAgent.js#L1-L471)
-- [statisticalAgent.js:1-98](file://backend/services/agents/statisticalAgent.js#L1-L98)
-- [formAgent.js:1-113](file://backend/services/agents/formAgent.js#L1-L113)
-- [h2hAgent.js:1-107](file://backend/services/agents/h2hAgent.js#L1-L107)
-- [intelAgent.js:1-126](file://backend/services/agents/intelAgent.js#L1-L126)
-- [lineupAgent.js:1-118](file://backend/services/agents/lineupAgent.js#L1-L118)
-- [qwenClient.js:1-123](file://backend/services/qwenClient.js#L1-L123)
-- [dataService.js:1-602](file://backend/services/dataService.js#L1-L602)
-- [lineupService.js:1-425](file://backend/services/lineupService.js#L1-L425)
-- [h2hService.js:1-315](file://backend/services/h2hService.js#L1-L315)
-- [analysisService.js:1-422](file://backend/services/analysisService.js#L1-L422)
-- [db.js:1-252](file://backend/database/db.js#L1-L252)
+- [db.js:160-249](file://backend/database/db.js#L160-L249)
 
 **Section sources**
-- [predictionEngine.js:1-1046](file://backend/services/predictionEngine.js#L1-L1046)
-- [agentFramework.js:1-576](file://backend/services/agents/agentFramework.js#L1-L576)
-- [orchestratorAgent.js:1-471](file://backend/services/agents/orchestratorAgent.js#L1-L471)
-- [db.js:1-252](file://backend/database/db.js#L1-L252)
+- [README.md:1-263](file://README.md#L1-L263)
+- [SPEC-PREDICT.md:1-147](file://specs/SPEC-PREDICT.md#L1-L147)
 
 ## Core Components
-- Dixon-Coles bivariate Poisson backbone: computes lambda-home and lambda-away from attack/defense ratings, home advantage, venue effects, and tournament-phase scaling; builds a scoreline matrix with low-score correction; derives outcome probabilities and expected goals.
-- Adjustment signals: head-to-head, recent form, pre-match intelligence, confirmed lineup, and rest-days factors are blended via log-pool weighting.
-- Temperature scaling: applies calibration to output probabilities using a tunable temperature parameter.
-- Multi-agent orchestration: parallel agent runs, conflict detection, negotiation, and final weighted blending.
-- Session management and audit trail: persistent logs of agent sessions, messages, conflicts, and resolutions.
-- Data acquisition: live feeds, web scraping, and caching for form, H2H, intelligence, and lineups.
-- Learning and calibration: post-match analysis, Brier scoring, and periodic refit of temperature and Dixon-Coles rho.
-- **Enhanced Validation**: Robust post-processing validation to prevent false information and hallucinations in AI-generated content.
-- **Comprehensive Fallbacks**: Multi-layered fallback mechanisms for LLM failures across all prediction components.
-
-**Updated** Added enhanced validation and comprehensive fallback mechanisms for improved reliability and data integrity.
+- Dixon-Coles bivariate Poisson backbone with λ-home and λ-away computation, low-score correction τ, and scoreline matrix normalization.
+- λ parameterization via ELO and α/β ratings: λ-home = exp(log_α-home + log_β-away + home_adv), λ-away = exp(log_α-away + log_β-home).
+- Signal weights and log-pool blending: W/D/L vectors from multiple sources combined via geometric mean raised to per-signal exponents, then normalized.
+- Multi-agent orchestration: parallel Round 1, conflict detection (Δ ≥ 20%), Round 2 rebuttal, and weight adjustments.
+- Calibration: temperature scaling for output probabilities and Dixon-Coles ρ refit on observed scorelines.
+- Accuracy tracking: model_performance table and predictions with correctness flags and Brier scores.
 
 **Section sources**
-- [predictionEngine.js:1-1046](file://backend/services/predictionEngine.js#L1-L1046)
+- [predictionEngine.js:67-100](file://backend/services/predictionEngine.js#L67-L100)
+- [predictionEngine.js:135-163](file://backend/services/predictionEngine.js#L135-L163)
+- [predictionEngine.js:214-238](file://backend/services/predictionEngine.js#L214-L238)
+- [agentFramework.js:19-35](file://backend/services/agents/agentFramework.js#L19-L35)
 - [calibrationService.js:1-132](file://backend/services/calibrationService.js#L1-L132)
-- [agentFramework.js:1-576](file://backend/services/agents/agentFramework.js#L1-L576)
-- [orchestratorAgent.js:1-471](file://backend/services/agents/orchestratorAgent.js#L1-L471)
-- [analysisService.js:1-422](file://backend/services/analysisService.js#L1-L422)
+- [db.js:96-110](file://backend/database/db.js#L96-L110)
 
 ## Architecture Overview
-The system supports two prediction modes:
-- Single-agent mode: predictionEngine.js computes the backbone, collects domain signals, blends via log-pool, applies temperature scaling, and saves results.
-- Multi-agent mode: orchestratorAgent.js coordinates agents, detects conflicts, negotiates, merges outputs, applies temperature scaling, and persists sessions and results.
+The system supports two operational modes:
+- Single-model mode: pure Dixon-Coles backbone with form/intel goal nudges and W/D/L-only signals blended via log-pool.
+- Multi-agent mode: same backbone precomputed, then five agents interpret and assess signals, negotiate conflicts, and produce a final blended prediction.
 
 ```mermaid
 sequenceDiagram
 participant Client as "Caller"
 participant PE as "predictionEngine.js"
-participant OA as "orchestratorAgent.js"
-participant AF as "agentFramework.js"
-participant Agents as "Specialist Agents"
-participant DS as "dataService.js"
-participant LS as "lineupService.js"
-participant HS as "h2hService.js"
-participant CS as "calibrationService.js"
-participant DB as "db.js"
+participant ORCH as "orchestratorAgent.js"
+participant AG as "AgentSession"
+participant SA as "StatisticalAgent"
+participant FA as "FormAgent"
+participant HA as "H2HAgent"
+participant IA as "IntelAgent"
+participant LA as "LineupAgent"
 Client->>PE : predict(matchId)
-alt Multi-Agent Enabled
-PE->>OA : runMultiAgentPrediction(matchId, precomputed)
-OA->>DS : fetch domain data (parallel)
-OA->>HS : H2H data
-OA->>LS : Lineup data
-OA->>AF : AgentSession.dispatch()
-AF->>Agents : Parallel runs
-AF->>AF : detectConflicts()
-AF->>Agents : negotiate() if conflicts
-AF->>AF : buildFinalOutputs()
-AF->>CS : applyTemperature()
-AF->>DB : save session + prediction
-OA-->>Client : Final prediction
-else Single-Agent Mode
-PE->>DS : fetch form/intel
-PE->>HS : fetch H2H
-PE->>LS : fetch lineup
-PE->>PE : backbone + signals → logPool → temperature
-PE->>DB : save prediction
-PE-->>Client : Final prediction
+alt USE_MULTI_AGENT enabled
+PE->>ORCH : runMultiAgentPrediction(matchId, precomputed)
+ORCH->>AG : dispatch(Round 1 tasks)
+AG->>SA : run()
+AG->>FA : run()
+AG->>HA : run()
+AG->>IA : run()
+AG->>LA : run()
+AG-->>ORCH : Round 1 outputs
+ORCH->>AG : detectConflicts()
+alt conflicts found
+ORCH->>AG : negotiate()
+AG-->>ORCH : revised outputs
+end
+ORCH->>ORCH : logPool() + applyTemperature()
+ORCH-->>Client : final prediction
+else single-model fallback
+PE->>PE : compute λ-home/λ-away + matrix
+PE->>PE : fetch signals (H2H/Form/Intel/Lineup/Rest)
+PE->>PE : logPool() + applyTemperature()
+PE-->>Client : final prediction
 end
 ```
 
 **Diagram sources**
 - [predictionEngine.js:691-922](file://backend/services/predictionEngine.js#L691-L922)
-- [orchestratorAgent.js:288-468](file://backend/services/agents/orchestratorAgent.js#L288-L468)
-- [agentFramework.js:345-561](file://backend/services/agents/agentFramework.js#L345-L561)
-- [calibrationService.js:53-82](file://backend/services/calibrationService.js#L53-L82)
-- [dataService.js:68-133](file://backend/services/dataService.js#L68-L133)
-- [lineupService.js:221-362](file://backend/services/lineupService.js#L221-L362)
-- [h2hService.js:272-312](file://backend/services/h2hService.js#L272-L312)
+- [orchestratorAgent.js:309-502](file://backend/services/agents/orchestratorAgent.js#L309-L502)
+- [agentFramework.js:350-503](file://backend/services/agents/agentFramework.js#L350-L503)
+
+**Section sources**
+- [predictionEngine.js:56-61](file://backend/services/predictionEngine.js#L56-L61)
+- [predictionEngine.js:729-755](file://backend/services/predictionEngine.js#L729-L755)
+- [README.md:18-105](file://README.md#L18-L105)
 
 ## Detailed Component Analysis
 
-### Dixon-Coles Bivariate Poisson Backbon
-- Lambda computation: combines team attack/defense logs, home advantage, venue scaling, and tournament-phase scaling.
-- Low-score correction: applies Dixon-Coles tau function to correct for over-dispersion at low scores.
-- Outcome and scoreline derivation: computes W/D/L from the matrix and selects top scorelines by expected points under the tournament scoring rule.
+### Dixon-Coles Poisson Backbonne and λ Parameters
+- λ-home and λ-away are derived from log_α (attack) and log_β (defence) parameters plus home advantage. λ values are scaled by venue conditions and tournament phase.
+- The scoreline matrix uses the bivariate Poisson with Dixon-Coles τ correction for low scores to address over-dispersion typical in football scoring.
+- Outcome probabilities are derived from the normalized matrix.
 
 ```mermaid
 flowchart TD
-Start(["Start"]) --> Params["Load team ratings<br/>homeAdv, venueEffect, wcScale"]
-Params --> Lambdas["Compute λ_home, λ_away"]
-Lambdas --> Matrix["Build score matrix with DC tau"]
-Matrix --> Outcomes["Derive W/D/L probs"]
-Outcomes --> Reweight["Reweight to final outcome totals"]
-Reweight --> TopScores["Pick top-3 scorelines"]
-TopScores --> MostLikely["Derive most_likely_score"]
-MostLikely --> End(["End"])
+Start(["Start"]) --> LoadTeams["Load teams with log_α/log_β"]
+LoadTeams --> HomeAdv["Compute home advantage (host-nation modifier)"]
+HomeAdv --> Lambda["Compute λ-home = exp(log_α-home + log_β-away + HA)<br/>λ-away = exp(log_α-away + log_β-home)"]
+Lambda --> Venue["Apply venue scaling (altitude/heat)"]
+Venue --> Phase["Apply WC goal scale (group vs knockout)"]
+Phase --> Matrix["Build DC score matrix with τ correction"]
+Matrix --> Probs["Derive W/D/L from matrix"]
+Probs --> End(["End"])
 ```
-
-**Updated** Enhanced with most_likely_score derivation from the score matrix to ensure data consistency and prevent internal inconsistencies.
 
 **Diagram sources**
 - [predictionEngine.js:135-163](file://backend/services/predictionEngine.js#L135-L163)
-- [predictionEngine.js:377-394](file://backend/services/predictionEngine.js#L377-L394)
-- [predictionEngine.js:410-438](file://backend/services/predictionEngine.js#L410-L438)
-- [predictionEngine.js:851-852](file://backend/services/predictionEngine.js#L851-L852)
+- [predictionEngine.js:205-212](file://backend/services/predictionEngine.js#L205-L212)
+- [predictionEngine.js:87-90](file://backend/services/predictionEngine.js#L87-L90)
 
 **Section sources**
-- [predictionEngine.js:67-134](file://backend/services/predictionEngine.js#L67-L134)
+- [predictionEngine.js:67-83](file://backend/services/predictionEngine.js#L67-L83)
 - [predictionEngine.js:135-163](file://backend/services/predictionEngine.js#L135-L163)
-- [predictionEngine.js:377-394](file://backend/services/predictionEngine.js#L377-L394)
-- [predictionEngine.js:410-438](file://backend/services/predictionEngine.js#L410-L438)
-- [predictionEngine.js:851-852](file://backend/services/predictionEngine.js#L851-L852)
+- [predictionEngine.js:205-212](file://backend/services/predictionEngine.js#L205-L212)
 
-### Adjustment Signals and Log-Pool Blending
-- Signal weights: backbone, H2H, form, intelligence, lineup, and rest-days.
-- Goal-channel nudges: form and intelligence can adjust lambda before matrix building.
-- Log-pool blending: geometric mean of probabilities raised to per-signal exponents, renormalized.
+### ELO Ratings Integration and α/β Initialization
+- ELO contributes to the statistical interpretation and historical weighting in agents.
+- α and β ratings are initialized from FIFA points and per-team scoring averages, then updated post-match using a regularized Poisson gradient step with clipping and regularization.
 
 ```mermaid
 flowchart TD
-A["Backbone probs"] --> W["Apply weights"]
-B["H2H probs"] --> W
-C["Form probs"] --> W
-D["Intel probs"] --> W
-E["Lineup probs"] --> W
-F["Rest probs"] --> W
-W --> LP["Log-pool blend"]
-LP --> End(["Final outcome probs"])
+Init(["Initialize ratings"]) --> FIFAPrior["Compute prior from FIFA points"]
+FIFAPrior --> TeamStats["Blend with team scoring averages"]
+TeamStats --> LogInit["Set log_α/log_β priors"]
+LogInit --> PostMatch["Post-match update via Poisson gradients"]
+PostMatch --> ClipReg["Clip gradients and regularize to priors"]
+ClipReg --> Persist["Persist updated log_α/log_β"]
 ```
 
+**Diagram sources**
+- [predictionEngine.js:177-203](file://backend/services/predictionEngine.js#L177-L203)
+- [predictionEngine.js:927-989](file://backend/services/predictionEngine.js#L927-L989)
+
 **Section sources**
-- [predictionEngine.js:240-362](file://backend/services/predictionEngine.js#L240-L362)
+- [predictionEngine.js:177-203](file://backend/services/predictionEngine.js#L177-L203)
+- [predictionEngine.js:927-989](file://backend/services/predictionEngine.js#L927-L989)
+
+### Log-Pool Probability Blending
+- Each signal produces a W/D/L probability vector. The final probabilities are proportional to the geometric mean of individual probabilities raised to per-signal exponents, then normalized.
+- Weights include BACKBONE, H2H, FORM, INTEL, LINEUP, and REST.
+
+```mermaid
+flowchart TD
+StartLP(["Start"]) --> Collect["Collect signals with weights"]
+Collect --> LogSum["Compute log-sum of weighted logs"]
+LogSum --> ExpZ["Exponentiate and normalize"]
+ExpZ --> Final["Final W/D/L probabilities"]
+Final --> EndLP(["End"])
+```
+
+**Diagram sources**
 - [predictionEngine.js:214-238](file://backend/services/predictionEngine.js#L214-L238)
-- [predictionEngine.js:809-819](file://backend/services/predictionEngine.js#L809-L819)
-
-### Temperature Scaling for Probability Calibration
-- Reads fitted temperature from model_config; defaults to 1.0 (no scaling).
-- Applies softmax-like scaling with inverse temperature to calibrate output confidence.
-
-```mermaid
-flowchart TD
-Start(["Read temperature"]) --> Scale{"T == 1.0?"}
-Scale --> |Yes| Return["Return probs unchanged"]
-Scale --> |No| Softmax["Apply 1/T scaling to log-probs"]
-Softmax --> Normalize["Renormalize"]
-Normalize --> End(["Calibrated probs"])
-```
-
-**Diagram sources**
-- [calibrationService.js:639-648](file://backend/services/predictionEngine.js#L639-L648)
-- [calibrationService.js:28-39](file://backend/services/calibrationService.js#L28-L39)
-- [calibrationService.js:650-662](file://backend/services/predictionEngine.js#L650-L662)
+- [predictionEngine.js:92-100](file://backend/services/predictionEngine.js#L92-L100)
 
 **Section sources**
-- [calibrationService.js:53-82](file://backend/services/calibrationService.js#L53-L82)
-- [predictionEngine.js:637-662](file://backend/services/predictionEngine.js#L637-L662)
+- [predictionEngine.js:214-238](file://backend/services/predictionEngine.js#L214-L238)
+- [predictionEngine.js:835-846](file://backend/services/predictionEngine.js#L835-L846)
 
-### Multi-Agent Coordination Workflow
-- AgentSession manages lifecycle: dispatch, conflict detection, negotiation, final output assembly, and persistence.
-- Conflict detection: pairwise comparison of max probability delta; thresholds trigger negotiation.
-- Negotiation: agents challenge each other's positions; the agent that moves less "wins" and gains a weight boost; the loser's probability is replaced with their revised output.
-- Final synthesis: log-pool blending of agent outputs with adjusted weights, followed by temperature scaling.
-
-```mermaid
-sequenceDiagram
-participant S as "AgentSession"
-participant A as "Agent A"
-participant B as "Agent B"
-S->>A : Round 1 prompt
-S->>B : Round 1 prompt
-A-->>S : Round 1 output
-B-->>S : Round 1 output
-S->>S : detectConflicts()
-alt Conflicts Found
-S->>A : Challenge prompt (delta)
-S->>B : Challenge prompt (delta)
-A-->>S : Revised output A'
-B-->>S : Revised output B'
-S->>S : buildFinalOutputs()
-else No Conflicts
-S->>S : Use Round 1 outputs
-end
-S->>S : save() to DB
-```
-
-**Diagram sources**
-- [agentFramework.js:345-561](file://backend/services/agents/agentFramework.js#L345-L561)
-- [orchestratorAgent.js:367-468](file://backend/services/agents/orchestratorAgent.js#L367-L468)
-
-**Section sources**
-- [agentFramework.js:326-561](file://backend/services/agents/agentFramework.js#L326-L561)
-- [orchestratorAgent.js:288-468](file://backend/services/agents/orchestratorAgent.js#L288-L468)
-
-### Specialized Agents
-- StatisticalAgent: interprets the backbone (lambda, ratings, venue) and flags anomalies.
-- FormAgent: evaluates recent form with competition weighting and opponent quality.
-- H2HAgent: uses a real historical dataset to derive weighted probabilities.
-- IntelAgent: parses pre-match intelligence (injuries, motivation, rotation) and quantifies impact.
-- LineupAgent: converts confirmed lineup strength into a high-weight probability adjustment.
+### Multi-Agent System and Negotiation Protocol
+- Five agents interpret different aspects of the match:
+  - Statistical: λ, ELO, α/β, venue/home advantage.
+  - Form: last 10 matches with competition weighting.
+  - H2H: real head-to-head record (skips if <2 meetings).
+  - Intel: injuries, motivation, rotation from web intel.
+  - Lineup: confirmed starting XI (~60–75 min before KO).
+- Conflict detection: pairwise max probability delta ≥ 20% triggers negotiation.
+- Round 2: agents challenge each other; the agent that moved less “wins,” gaining 1.3× weight, the loser’s weight becomes 0.6×.
+- Final blend: log-pool of agent outputs with adjusted weights.
 
 ```mermaid
 classDiagram
@@ -328,304 +240,168 @@ class Agent {
 +model
 +systemPrompt
 +run(userMessage) AgentOutput
-+challenge(own, opposing, delta) AgentOutput
++challenge(ownOutput, opposingOutput, delta) AgentOutput
 }
-class StatisticalAgent
-class FormAgent
-class H2HAgent
-class IntelAgent
-class LineupAgent
-Agent <|-- StatisticalAgent
-Agent <|-- FormAgent
-Agent <|-- H2HAgent
-Agent <|-- IntelAgent
-Agent <|-- LineupAgent
+class AgentSession {
++sessionId
++dispatch(agentTasks)
++detectConflicts()
++negotiate(agentMap)
++buildFinalOutputs()
++save(synthesisMethod)
+}
+class Orchestrator {
++runMultiAgentPrediction(matchId, precomputed)
+}
+AgentSession --> Agent : "coordinates"
+Orchestrator --> AgentSession : "uses"
 ```
 
 **Diagram sources**
-- [agentFramework.js:201-320](file://backend/services/agents/agentFramework.js#L201-L320)
-- [statisticalAgent.js:90-98](file://backend/services/agents/statisticalAgent.js#L90-L98)
-- [formAgent.js:105-113](file://backend/services/agents/formAgent.js#L105-L113)
-- [h2hAgent.js:99-107](file://backend/services/agents/h2hAgent.js#L99-L107)
-- [intelAgent.js:118-126](file://backend/services/agents/intelAgent.js#L118-L126)
-- [lineupAgent.js:110-118](file://backend/services/agents/lineupAgent.js#L110-L118)
+- [agentFramework.js:211-330](file://backend/services/agents/agentFramework.js#L211-L330)
+- [agentFramework.js:336-572](file://backend/services/agents/agentFramework.js#L336-L572)
+- [orchestratorAgent.js:309-502](file://backend/services/agents/orchestratorAgent.js#L309-L502)
 
 **Section sources**
-- [statisticalAgent.js:18-98](file://backend/services/agents/statisticalAgent.js#L18-L98)
-- [formAgent.js:17-113](file://backend/services/agents/formAgent.js#L17-L113)
-- [h2hAgent.js:18-107](file://backend/services/agents/h2hAgent.js#L18-L107)
-- [intelAgent.js:20-126](file://backend/services/agents/intelAgent.js#L20-L126)
-- [lineupAgent.js:18-118](file://backend/services/agents/lineupAgent.js#L18-L118)
+- [agentFramework.js:19-35](file://backend/services/agents/agentFramework.js#L19-L35)
+- [agentFramework.js:376-404](file://backend/services/agents/agentFramework.js#L376-L404)
+- [agentFramework.js:406-445](file://backend/services/agents/agentFramework.js#L406-L445)
+- [agentFramework.js:447-503](file://backend/services/agents/agentFramework.js#L447-L503)
+- [orchestratorAgent.js:309-502](file://backend/services/agents/orchestratorAgent.js#L309-L502)
 
-### Session Management and Audit Trail
-- AgentSession persists round 1 and round 2 messages, conflict detections and resolutions, and synthesis metadata.
-- Database tables capture agent sessions, messages, conflicts, and prediction linkage to sessions.
-
-```mermaid
-erDiagram
-AGENT_SESSIONS {
-text id PK
-text match_id
-text agents_used
-int rounds
-int conflicts_detected
-int conflicts_resolved
-text synthesis_method
-int wall_time_ms
-text created_at
-}
-AGENT_MESSAGES {
-int id PK
-text session_id FK
-int round
-text agent
-text role
-text probability
-real confidence
-text evidence
-text raw_response
-int latency_ms
-text created_at
-}
-AGENT_CONFLICTS {
-int id PK
-text session_id FK
-text agent_a
-text agent_b
-real delta
-int round_detected
-text resolution
-text winner
-text resolution_reasoning
-text created_at
-}
-PREDICTIONS {
-int id PK
-text match_id
-text generated_at
-real prob_home
-real prob_draw
-real prob_away
-real expected_score_home
-real expected_score_away
-text most_likely_score
-text top_scores
-text confidence
-text factors
-text web_intel
-text insight
-text methodology
-real lambda_home
-real lambda_away
-text agent_session_id
-}
-AGENT_SESSIONS ||--o{ AGENT_MESSAGES : "contains"
-AGENT_SESSIONS ||--o{ AGENT_CONFLICTS : "resolves"
-PREDICTIONS }o--|| AGENT_SESSIONS : "links to"
-```
-
-**Diagram sources**
-- [db.js:167-207](file://backend/database/db.js#L167-L207)
-- [agentFramework.js:500-561](file://backend/services/agents/agentFramework.js#L500-L561)
-- [orchestratorAgent.js:242-272](file://backend/services/agents/orchestratorAgent.js#L242-L272)
+### Single-Model Fallback System
+- When multi-agent is disabled, the engine computes λ-home/λ-away from the backbone, fetches W/D/L-only signals (H2H, Form, Intel, Lineup availability, Rest days), blends via log-pool, and applies temperature scaling.
+- Insight generation uses a template fallback when LLM is unavailable.
 
 **Section sources**
-- [agentFramework.js:326-561](file://backend/services/agents/agentFramework.js#L326-L561)
-- [db.js:167-207](file://backend/database/db.js#L167-L207)
+- [predictionEngine.js:729-755](file://backend/services/predictionEngine.js#L729-L755)
+- [predictionEngine.js:835-846](file://backend/services/predictionEngine.js#L835-L846)
+- [predictionEngine.js:585-661](file://backend/services/predictionEngine.js#L585-L661)
 
-### Data Acquisition and External Integrations
-- Live results sync: fetches in-play and finished matches from an API, flips status to LIVE, and records final scores.
-- Intelligence pipeline: web scraping of news, LLM extraction of structured intel, and anti-hallucination verification.
-- Form and H2H: API-backed retrieval with fallbacks and seeding of large historical datasets.
-
-```mermaid
-sequenceDiagram
-participant API as "External API"
-participant DS as "dataService.js"
-participant LS as "lineupService.js"
-participant HS as "h2hService.js"
-participant QC as "qwenClient.js"
-DS->>API : fetchTeamForm()
-DS->>API : fetchHeadToHead()
-DS->>QC : parseIntelWithLLM()
-LS->>API : fetchLineupFromAPI()
-LS->>DS : scrapeLineupESPN()
-HS->>HS : ensureH2HData()
-HS->>API : download dataset (once)
-```
-
-**Updated** Enhanced with comprehensive fallback mechanisms and validation to prevent hallucinations in AI-generated content.
-
-**Diagram sources**
-- [dataService.js:68-133](file://backend/services/dataService.js#L68-L133)
-- [dataService.js:190-265](file://backend/services/dataService.js#L190-L265)
-- [dataService.js:413-490](file://backend/services/dataService.js#L413-L490)
-- [lineupService.js:84-155](file://backend/services/lineupService.js#L84-L155)
-- [h2hService.js:95-165](file://backend/services/h2hService.js#L95-L165)
-- [qwenClient.js:53-101](file://backend/services/qwenClient.js#L53-L101)
-
-**Section sources**
-- [dataService.js:495-602](file://backend/services/dataService.js#L495-L602)
-- [lineupService.js:221-362](file://backend/services/lineupService.js#L221-L362)
-- [h2hService.js:272-312](file://backend/services/h2hService.js#L272-L312)
-
-### Learning and Calibration
-- Post-match analysis: compares prediction to actual outcome, computes Brier score, outcome correctness, and points.
-- Calibration refit: periodically recomputes temperature and Dixon-Coles rho using stored predictions and observed scorelines.
+### Calibration Service: Temperature Scaling and Dixon-Coles ρ Refit
+- Temperature scaling: minimize negative log-likelihood over stored predictions to find optimal T.
+- Dixon-Coles ρ refit: maximize likelihood over observed scorelines using stored λ-home/λ-away to refine τ.
+- Values are persisted to model_config for production use.
 
 ```mermaid
 flowchart TD
-Start(["Match Completed"]) --> LoadPred["Load latest prediction"]
-LoadPred --> Points["Compute points using most_likely_score"]
-Points --> Metrics["Compute Brier, correctness, points"]
-Metrics --> InsertMP["Insert into model_performance"]
-InsertMP --> Threshold{"Completed >= 20 and %10==0?"}
-Threshold --> |Yes| Refit["refitTemperature() + refitDcRho()"]
-Threshold --> |No| End(["Done"])
-Refit --> End
+StartC(["Start calibration"]) --> Samples["Fetch predictions with outcomes"]
+Samples --> TempGrid["Grid search T ∈ [0.5, 2.5]"]
+TempGrid --> BestT["Select best T by NLL"]
+BestT --> SaveT["Persist calibration_temperature"]
+SaveT --> RhoGrid["Grid search ρ ∈ [-0.30, 0.05]"]
+RhoGrid --> BestRho["Select best ρ by NLL"]
+BestRho --> SaveRho["Persist dc_rho"]
+SaveRho --> EndC(["End"])
 ```
 
-**Updated** Enhanced with most_likely_score-based point calculation to ensure data consistency and prevent outcome mismatches.
-
 **Diagram sources**
-- [analysisService.js:76-218](file://backend/services/analysisService.js#L76-L218)
-- [calibrationService.js:53-129](file://backend/services/calibrationService.js#L53-L129)
+- [calibrationService.js:53-82](file://backend/services/calibrationService.js#L53-L82)
+- [calibrationService.js:88-129](file://backend/services/calibrationService.js#L88-L129)
 
 **Section sources**
-- [analysisService.js:76-218](file://backend/services/analysisService.js#L76-L218)
-- [calibrationService.js:53-129](file://backend/services/calibrationService.js#L53-L129)
+- [calibrationService.js:1-132](file://backend/services/calibrationService.js#L1-L132)
+- [db.js:160-165](file://backend/database/db.js#L160-L165)
 
-### Enhanced Validation and Fallback Systems
-**New Section** The prediction engine now includes comprehensive validation and fallback mechanisms to ensure data integrity and system reliability:
-
-- **Post-processing Validation**: AI-generated insights undergo validation to prevent false information and hallucinations by cross-referencing with validated injury lists.
-- **Multi-layered Fallbacks**: All LLM components include fallback mechanisms - from JSON parsing retries to uniform priors when LLM calls fail.
-- **Anti-hallucination Guards**: Web intelligence parsing includes strict validation to prevent LLM confabulations about player injuries or availability.
-- **Data Consistency Checks**: Most_likely_score field is derived from the score matrix to prevent internal inconsistencies between outcome probabilities and score predictions.
+### Model Accuracy Tracking and Performance Monitoring
+- Predictions include correctness flags and Brier scores; model_performance tracks outcomes, confidence tiers, and points under the 3/2/2/1/0 scoring rule.
+- The Predictions page surfaces accuracy metrics and allows filtering by status and group.
 
 **Section sources**
-- [predictionEngine.js:606-661](file://backend/services/predictionEngine.js#L606-L661)
-- [agentFramework.js:235-334](file://backend/services/agents/agentFramework.js#L235-L334)
-- [dataService.js:300-399](file://backend/services/dataService.js#L300-L399)
+- [db.js:96-110](file://backend/database/db.js#L96-L110)
+- [SPEC-PREDICT.md:28-51](file://specs/SPEC-PREDICT.md#L28-L51)
 
 ## Dependency Analysis
-- predictionEngine depends on dataService, h2hService, lineupService, and qwenClient for multi-agent mode.
-- agentFramework depends on qwenClient and db for persistence.
-- orchestratorAgent composes agents and delegates to agentFramework.
-- analysisService depends on predictionEngine for rating updates and on calibrationService for refits.
+- predictionEngine depends on:
+  - data services for form and intel
+  - h2hService for head-to-head probabilities
+  - lineupService for lineup-derived probabilities
+  - qwenClient for insight generation
+  - orchestratorAgent for multi-agent mode
+- agentFramework defines the shared negotiation protocol and JSON schema for agent outputs.
+- calibrationService reads from predictions and writes to model_config.
 
 ```mermaid
 graph LR
-PE["predictionEngine.js"] --> DS["dataService.js"]
-PE --> HS["h2hService.js"]
-PE --> LS["lineupService.js"]
-PE --> CS["calibrationService.js"]
-OA["orchestratorAgent.js"] --> AF["agentFramework.js"]
-OA --> SA["statisticalAgent.js"]
-OA --> FA["formAgent.js"]
-OA --> HA["h2hAgent.js"]
-OA --> IA["intelAgent.js"]
-OA --> LA["lineupAgent.js"]
-AF --> QC["qwenClient.js"]
-AF --> DB["db.js"]
-OA --> DB
+PE["predictionEngine.js"] --> DS["dataService"]
+PE --> HS["h2hService"]
+PE --> LS["lineupService"]
+PE --> QC["qwenClient"]
+PE --> ORCH["orchestratorAgent.js"]
+ORCH --> AF["agentFramework.js"]
+ORCH --> SA["statisticalAgent.js"]
+ORCH --> FA["formAgent.js"]
+ORCH --> HA["h2hAgent.js"]
+ORCH --> IA["intelAgent.js"]
+ORCH --> LA["lineupAgent.js"]
+CS["calibrationService.js"] --> DB["model_config (DB)"]
 PE --> DB
-AS["analysisService.js"] --> PE
-AS --> CS
-AS --> DB
 ```
 
 **Diagram sources**
 - [predictionEngine.js:37-43](file://backend/services/predictionEngine.js#L37-L43)
+- [orchestratorAgent.js:28-37](file://backend/services/agents/orchestratorAgent.js#L28-L37)
 - [agentFramework.js:27-29](file://backend/services/agents/agentFramework.js#L27-L29)
-- [orchestratorAgent.js:28-30](file://backend/services/agents/orchestratorAgent.js#L28-L30)
-- [analysisService.js:13-16](file://backend/services/analysisService.js#L13-L16)
+- [calibrationService.js:15-16](file://backend/services/calibrationService.js#L15-L16)
+- [db.js:160-165](file://backend/database/db.js#L160-L165)
 
 **Section sources**
 - [predictionEngine.js:37-43](file://backend/services/predictionEngine.js#L37-L43)
+- [orchestratorAgent.js:28-37](file://backend/services/agents/orchestratorAgent.js#L28-L37)
 - [agentFramework.js:27-29](file://backend/services/agents/agentFramework.js#L27-L29)
-- [orchestratorAgent.js:28-30](file://backend/services/agents/orchestratorAgent.js#L28-L30)
-- [analysisService.js:13-16](file://backend/services/analysisService.js#L13-L16)
+- [calibrationService.js:15-16](file://backend/services/calibrationService.js#L15-L16)
+- [db.js:160-165](file://backend/database/db.js#L160-L165)
 
 ## Performance Considerations
-- Parallelization: multi-agent dispatch and domain data fetching reduce latency.
-- Caching: web_intel_cache and team form caches minimize repeated network calls.
-- Numerical stability: log-space computations and renormalization prevent under/overflow.
-- Early exits: skip agents when data is unavailable or insufficient (e.g., H2H with <2 meetings).
-- Database tuning: pragmas and migrations optimized for concurrent access and schema evolution.
-- **Enhanced Reliability**: Comprehensive fallback mechanisms ensure system continues operating even when individual components fail.
-
-**Updated** Added enhanced reliability considerations for the new fallback and validation systems.
+- Multi-agent mode: parallel Round 1 dispatch reduces latency; negotiation adds overhead but improves robustness.
+- Log-pool blending preserves confidence better than arithmetic averaging, reducing over-shrinking of extreme probabilities.
+- Temperature scaling and ρ refit improve calibration on observed outcomes.
+- Venue and phase scaling adjust λ expectations to tournament context, improving match-specific accuracy.
 
 [No sources needed since this section provides general guidance]
 
 ## Troubleshooting Guide
-- API keys missing: qwenClient throws if DASHSCOPE_API_KEY is not set; dataService warns on FOOTBALL_DATA_API_KEY absence.
-- JSON parsing failures: agentFramework retries once and falls back to uniform priors; logs parse errors.
-- Incomplete or missing data: agents return near-neutral outputs; orchestrator skips unavailable agents.
-- Calibration not applied: if temperature remains at default 1.0, verify model_config and refit triggers.
-- **Enhanced Error Handling**: Post-processing validation removes hallucinated content from AI outputs; fallback mechanisms ensure predictions are always generated even when LLM components fail.
-
-**Updated** Added troubleshooting guidance for the new validation and fallback systems.
+- JSON parsing failures: agentFramework sanitizes and retries; outputs fall back to uniform priors with flags.
+- LLM call failures: agents return Round 1 outputs unchanged in Round 2; orchestrator continues with available results.
+- Missing signals: H2H requires ≥2 meetings; Lineup agent skips when unavailable; Rest days only applies when ≥1 day difference.
+- Calibration not updating: requires minimum samples and appropriate thresholds.
 
 **Section sources**
-- [qwenClient.js:60-101](file://backend/services/qwenClient.js#L60-L101)
-- [agentFramework.js:112-146](file://backend/services/agents/agentFramework.js#L112-L146)
-- [orchestratorAgent.js:332-363](file://backend/services/agents/orchestratorAgent.js#L332-L363)
-- [analysisService.js:202-211](file://backend/services/analysisService.js#L202-L211)
+- [agentFramework.js:56-100](file://backend/services/agents/agentFramework.js#L56-L100)
+- [agentFramework.js:122-156](file://backend/services/agents/agentFramework.js#L122-L156)
+- [agentFramework.js:282-329](file://backend/services/agents/agentFramework.js#L282-L329)
+- [h2hAgent.js:38-45](file://backend/services/agents/h2hAgent.js#L38-L45)
+- [lineupAgent.js:44-51](file://backend/services/agents/lineupAgent.js#L44-L51)
+- [calibrationService.js:53-82](file://backend/services/calibrationService.js#L53-L82)
 
 ## Conclusion
-The prediction engine combines a robust Dixon-Coles Poisson backbone with adaptive, multi-source signals and a principled multi-agent negotiation framework. Temperature scaling ensures well-calibrated probabilities, while comprehensive session logging enables transparency and auditability. The system gracefully handles missing data and integrates external sources to maintain reliable outputs across diverse scenarios. **Enhanced validation and fallback mechanisms** ensure data integrity and system reliability, preventing false information and maintaining operational continuity even when AI features encounter issues.
+The Prediction Engine combines a robust Dixon-Coles Poisson backbone with ELO and α/β ratings, integrates multiple complementary signals via log-pool blending, and leverages a multi-agent negotiation protocol to produce calibrated, explainable match forecasts. The single-model fallback ensures fast operation when multi-agent is disabled, while calibration and performance tracking enable continuous refinement.
 
-**Updated** Enhanced conclusion to reflect the improved validation, fallback systems, and overall reliability improvements.
+[No sources needed since this section summarizes without analyzing specific files]
 
 ## Appendices
 
-### Mathematical Foundations and Algorithms
-- Dixon-Coles Poisson: score matrix construction with low-score correction; outcome and expected score derivation.
-- Log-pool blending: geometric mean of probabilities with per-signal exponents; preserves confidence.
-- Temperature scaling: inverse-temperature softmax normalization for calibration.
-- Conflict detection and negotiation: pairwise delta thresholds, iterative rebuttals, and weight adjustments.
+### Mathematical Definitions and Algorithms
+- Dixon-Coles τ correction:
+  - τ(0,0) = 1 − λH λA ρ
+  - τ(0,1) = 1 + λH ρ
+  - τ(1,0) = 1 + λA ρ
+  - τ(1,1) = 1 − ρ
+- Poisson PMF: P(k; λ) ∝ e^−λ λ^k / k!
+- Log-pool blending: p_final ∝ ∏ p_i^w_i, normalized.
+- Confidence tiers: max probability thresholds define Very High, High, Medium, Low.
 
 **Section sources**
-- [predictionEngine.js:135-163](file://backend/services/predictionEngine.js#L135-L163)
+- [predictionEngine.js:143-149](file://backend/services/predictionEngine.js#L143-L149)
+- [predictionEngine.js:136-141](file://backend/services/predictionEngine.js#L136-L141)
 - [predictionEngine.js:214-238](file://backend/services/predictionEngine.js#L214-L238)
-- [calibrationService.js:28-39](file://backend/services/calibrationService.js#L28-L39)
-- [agentFramework.js:103-109](file://backend/services/agents/agentFramework.js#L103-L109)
-
-### Methodology Tracking and Factors
-- Factors list captures each signal's impact, favor direction, and weight percentage.
-- Methodology string summarizes the final blend composition.
-- Confidence tiers derived from maximum outcome probability.
-
-**Section sources**
-- [predictionEngine.js:462-583](file://backend/services/predictionEngine.js#L462-L583)
-- [orchestratorAgent.js:183-191](file://backend/services/agents/orchestratorAgent.js#L183-L191)
 - [predictionEngine.js:365-371](file://backend/services/predictionEngine.js#L365-L371)
 
-### Fallback Mechanisms
-- When AI features disabled: feature flags control multi-agent enablement; single-agent path computes backbone and signals without LLM orchestration.
-- Data fallbacks: web scraping for form/H2H/intel; default synthetic form generation; static H2H estimates.
-- **Enhanced LLM Fallbacks**: Multi-layered fallback mechanisms including JSON parsing retries, uniform priors, and fallback prompts when LLM components fail.
-
-**Updated** Enhanced fallback mechanisms section to reflect comprehensive LLM fallback systems.
+### Example Prediction Outputs
+- Win/Draw/Away probabilities, expected score, most likely and top-3 scorelines, confidence tier, methodology attribution, and factors list.
+- Example insight: analyst commentary synthesizing top factors and outcomes.
 
 **Section sources**
-- [predictionEngine.js:55-61](file://backend/services/predictionEngine.js#L55-L61)
-- [dataService.js:117-185](file://backend/services/dataService.js#L117-L185)
-- [h2hService.js:235-265](file://backend/services/h2hService.js#L235-L265)
-- [agentFramework.js:235-334](file://backend/services/agents/agentFramework.js#L235-L334)
-
-### Data Validation and Integrity
-**New Section** The prediction engine implements comprehensive data validation and integrity checks:
-
-- **Most Likely Score Derivation**: Outcome probabilities and score predictions are derived from the same score matrix to prevent internal inconsistencies.
-- **Post-processing Validation**: AI-generated insights are validated against validated injury lists to prevent hallucinations about player availability.
-- **Anti-hallucination Guards**: Web intelligence parsing validates player names against source text context to prevent LLM confabulations.
-- **Consistency Checking**: Point calculation uses most_likely_score to ensure data consistency between predictions and actual outcomes.
-
-**Section sources**
-- [predictionEngine.js:396-438](file://backend/services/predictionEngine.js#L396-L438)
-- [predictionEngine.js:606-661](file://backend/services/predictionEngine.js#L606-L661)
-- [dataService.js:300-399](file://backend/services/dataService.js#L300-L399)
-- [analysisService.js:37-57](file://backend/services/analysisService.js#L37-L57)
+- [predictionEngine.js:861-882](file://backend/services/predictionEngine.js#L861-L882)
+- [predictionEngine.js:585-661](file://backend/services/predictionEngine.js#L585-L661)
+- [SPEC-PREDICT.md:96-98](file://specs/SPEC-PREDICT.md#L96-L98)

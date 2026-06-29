@@ -1,1 +1,0 @@
-Orchestrates a conflict-resolving multi-agent prediction backend and React frontend into a unified World Cup forecasting application via synchronized local development and automated cloud deployment.

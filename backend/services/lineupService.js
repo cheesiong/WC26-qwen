@@ -154,6 +154,141 @@ async function scrapeLineupESPN(homeTeamName, awayTeamName, matchDate) {
   }
 }
 
+// ── Scrape from Google search (multi-source) ──────────────────────
+// Searches for lineup data across multiple football sites
+async function scrapeLineupGoogle(homeTeamName, awayTeamName, matchDate) {
+  try {
+    const query = encodeURIComponent(`${homeTeamName} ${awayTeamName} lineup formation ${matchDate}`);
+    const searchResp = await axios.get(`https://www.google.com/search?q=${query}&num=5`, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' },
+      timeout: 7000,
+    });
+
+    const $ = cheerio.load(searchResp.data);
+    const lineups = [];
+
+    // Try to find lineup data in Google's featured snippets or knowledge panels
+    // Look for formation patterns like "4-3-3", "4-4-2", "3-5-2" etc.
+    const pageText = $.text();
+    const formationMatch = pageText.match(/(\d-\d-\d[-\d]*)/);
+
+    // Look for player names in structured data
+    // Google often shows lineup info in rich results
+    $('div[data-attrid], div[data-md], .kP1Bkf, .wDYxhc').each((_, el) => {
+      const text = $(el).text();
+      const playerLines = text.split('\n').filter(l => l.trim());
+      for (const line of playerLines) {
+        // Match patterns like "1. Player Name - Position" or "Player Name (Position)"
+        const playerMatch = line.match(/^\d+[\.\)]\s*(.+?)(?:\s*[-–]\s*(.+))?$/);
+        if (playerMatch) {
+          const name = playerMatch[1].trim();
+          const pos = playerMatch[2]?.trim() || '';
+          if (name && name.length > 2 && name.length < 40) {
+            lineups.push({ name, position: pos });
+          }
+        }
+      }
+    });
+
+    if (lineups.length >= 11) {
+      // Split into two teams (first 11 = home, rest = away)
+      const homeStarters = lineups.slice(0, 11);
+      const awayStarters = lineups.slice(11, 22);
+      if (awayStarters.length >= 11) {
+        return [
+          { starters: homeStarters, bench: [], formation: formationMatch?.[1] || null, coach: null },
+          { starters: awayStarters, bench: [], formation: null, coach: null },
+        ];
+      }
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+// ── Scrape from Sofascore web page (SEO-rendered HTML) ───────────
+async function scrapeLineupSofascore(homeTeamName, awayTeamName, matchDate) {
+  try {
+    // Sofascore URL pattern: /football/{tournament}/{home}-{away}/{eventId}
+    // We search for the match page first
+    const query = encodeURIComponent(`${homeTeamName} ${awayTeamName} ${matchDate} site:sofascore.com`);
+    const searchResp = await axios.get(`https://www.google.com/search?q=${query}&num=3`, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+      timeout: 7000,
+    });
+
+    const $ = cheerio.load(searchResp.data);
+    const sofaUrl = $('a[href*="sofascore.com"]').first().attr('href');
+    if (!sofaUrl) return null;
+
+    const matchUrl = sofaUrl.match(/https?:\/\/www\.sofascore\.com[^\s"&]+/)?.[0];
+    if (!matchUrl) return null;
+
+    const pageResp = await axios.get(matchUrl, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+      timeout: 8000,
+    });
+
+    const $page = cheerio.load(pageResp.data);
+    const lineups = [];
+
+    // Sofascore uses structured data in script tags for SEO
+    const scriptContent = $page('script[type="application/ld+json"]').html();
+    if (scriptContent) {
+      try {
+        const data = JSON.parse(scriptContent);
+        // Extract lineup from structured data if available
+        if (data?.performer?.member) {
+          for (const team of data.performer.member) {
+            const starters = (team.player || []).map(p => ({
+              name: p.name,
+              position: p.position?.name || '',
+              shirtNumber: p.uniformNumber,
+            })).filter(p => p.name);
+            if (starters.length > 0) {
+              lineups.push({ starters, bench: [], formation: null, coach: null });
+            }
+          }
+        }
+      } catch { /* ignore parse errors */ }
+    }
+
+    // Fallback: look for lineup in meta tags or visible text
+    if (lineups.length < 2) {
+      const metaDesc = $page('meta[name="description"]').attr('content') || '';
+      const bodyText = $page('body').text();
+
+      // Try to find player names near formation info
+      const formationMatch = bodyText.match(/(\d-\d-\d[-\d]*)/);
+      const playerPattern = /([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)/g;
+      const names = [...bodyText.matchAll(playerPattern)].map(m => m[1]);
+
+      // Filter to likely player names (2-3 words, not common words)
+      const skipWords = new Set(['The', 'And', 'For', 'Not', 'But', 'World', 'Cup', 'Football', 'Match', 'Lineup', 'Formation']);
+      const playerNames = names.filter(n => {
+        const words = n.split(' ');
+        return words.length >= 2 && words.length <= 3 && !skipWords.has(words[0]);
+      });
+
+      if (playerNames.length >= 22) {
+        const homeStarters = playerNames.slice(0, 11).map(name => ({ name, position: '' }));
+        const awayStarters = playerNames.slice(11, 22).map(name => ({ name, position: '' }));
+        lineups.length = 0;
+        lineups.push(
+          { starters: homeStarters, bench: [], formation: formationMatch?.[1] || null, coach: null },
+          { starters: awayStarters, bench: [], formation: null, coach: null },
+        );
+      }
+    }
+
+    return lineups.length === 2 ? lineups : null;
+  } catch {
+    return null;
+  }
+}
+
 // ── Compute lineup strength score ────────────────────────────────
 function computeStrengthScore(starters, teamElo) {
   if (!starters || starters.length === 0) return 5.0; // neutral default
@@ -276,6 +411,18 @@ async function fetchLineup(matchId) {
   if (!rawLineups) {
     rawLineups = await scrapeLineupESPN(match.home_name, match.away_name, match.scheduled_date);
     if (rawLineups) source = 'espn';
+  }
+
+  // 3. Sofascore (SEO-rendered HTML + structured data)
+  if (!rawLineups) {
+    rawLineups = await scrapeLineupSofascore(match.home_name, match.away_name, match.scheduled_date);
+    if (rawLineups) source = 'sofascore';
+  }
+
+  // 4. Google multi-source search
+  if (!rawLineups) {
+    rawLineups = await scrapeLineupGoogle(match.home_name, match.away_name, match.scheduled_date);
+    if (rawLineups) source = 'google';
   }
 
   if (!rawLineups || rawLineups.length < 2) {

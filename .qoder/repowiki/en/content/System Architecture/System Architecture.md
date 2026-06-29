@@ -4,19 +4,20 @@
 **Referenced Files in This Document**
 - [README.md](file://README.md)
 - [docker-compose.yml](file://docker-compose.yml)
-- [backend/server.js](file://backend/server.js)
 - [backend/package.json](file://backend/package.json)
 - [frontend/package.json](file://frontend/package.json)
+- [backend/server.js](file://backend/server.js)
+- [frontend/src/App.jsx](file://frontend/src/App.jsx)
+- [frontend/src/api/client.js](file://frontend/src/api/client.js)
 - [backend/services/predictionEngine.js](file://backend/services/predictionEngine.js)
 - [backend/services/agents/orchestratorAgent.js](file://backend/services/agents/orchestratorAgent.js)
-- [backend/services/agents/agentFramework.js](file://backend/services/agents/agentFramework.js)
 - [backend/services/qwenClient.js](file://backend/services/qwenClient.js)
 - [backend/database/db.js](file://backend/database/db.js)
-- [frontend/src/api/client.js](file://frontend/src/api/client.js)
-- [frontend/src/App.jsx](file://frontend/src/App.jsx)
-- [frontend/src/pages/MatchDetail.jsx](file://frontend/src/pages/MatchDetail.jsx)
 - [backend/services/dataService.js](file://backend/services/dataService.js)
-- [backend/services/bracketService.js](file://backend/services/bracketService.js)
+- [frontend/nginx.conf.template](file://frontend/nginx.conf.template)
+- [backend/Dockerfile](file://backend/Dockerfile)
+- [frontend/Dockerfile](file://frontend/Dockerfile)
+- [backend/scripts/regen-predictions.js](file://backend/scripts/regen-predictions.js)
 </cite>
 
 ## Table of Contents
@@ -29,384 +30,472 @@
 7. [Performance Considerations](#performance-considerations)
 8. [Troubleshooting Guide](#troubleshooting-guide)
 9. [Conclusion](#conclusion)
+10. [Appendices](#appendices)
 
 ## Introduction
-WC26-Qwen-Qoder is a full-stack prediction application for the 2026 FIFA World Cup powered by Alibaba Cloud DashScope Qwen AI. The system integrates a multi-agent AI prediction engine with a React frontend and Node.js/Express backend, delivering match predictions, tournament brackets, and analytics. It uses SQLite with WAL mode for concurrent access, containerized deployment via Docker Compose with Nginx reverse proxy, and supports both single-model and multi-agent Qwen-powered predictions.
+This document describes the system architecture of the World Cup 2026 Prediction App. It covers the microservice-style separation between a React frontend and an Express.js backend, containerized deployment with Docker Compose and Nginx reverse proxy, data flow from external APIs and web scraping to SQLite storage and the UI, the AI integration layer using Alibaba Cloud Qwen models orchestrated by a multi-agent system, and the automated cron-based synchronization pipeline. Cross-cutting concerns such as security, monitoring, and disaster recovery are addressed alongside technology stack choices and third-party dependencies.
 
 ## Project Structure
 The repository follows a clear separation of concerns:
-- Frontend: React 18 with Vite, Tailwind CSS, and routing
-- Backend: Node.js/Express REST API with modular services
-- AI Integration: Qwen clients and multi-agent orchestration
-- Data Layer: SQLite database with migration and seeding
-- Deployment: Docker Compose with volume-backed storage
+- Frontend: React SPA built with Vite, served by Nginx inside a container.
+- Backend: Node.js/Express API server with SQLite database, cron jobs, and AI orchestration.
+- Infrastructure: Docker Compose defines services and volumes; Nginx handles reverse proxy and optional HTTPS via Certbot/Let’s Encrypt.
 
 ```mermaid
 graph TB
-subgraph "Frontend (React)"
-FE_APP["App.jsx<br/>Pages & Components"]
-FE_API["API Client<br/>Axios Wrapper"]
-end
-subgraph "Backend (Node.js/Express)"
-BE_SERVER["server.js<br/>REST API"]
-BE_PRED["predictionEngine.js<br/>Backbone + Blending"]
-BE_ORCH["orchestratorAgent.js<br/>Multi-Agent Orchestration"]
-BE_AGFW["agentFramework.js<br/>Agent Base Classes"]
-BE_QWEN["qwenClient.js<br/>DashScope Wrapper"]
-BE_DB["db.js<br/>SQLite Schema + WAL"]
-BE_DATA["dataService.js<br/>Live Data Fetch"]
-BE_BRACKET["bracketService.js<br/>Tournament Simulation"]
+subgraph "Container Runtime"
+FE["frontend (Nginx)"]
+BE["backend (Express)"]
+DB["SQLite volume"]
 end
 subgraph "External Services"
-DS_API["football-data.org API"]
-DASHSCOPE["DashScope Qwen"]
+API["football-data.org API"]
+QWEN["DashScope (Qwen)"]
 end
-FE_APP --> FE_API
-FE_API --> BE_SERVER
-BE_SERVER --> BE_PRED
-BE_PRED --> BE_ORCH
-BE_ORCH --> BE_AGFW
-BE_ORCH --> BE_QWEN
-BE_PRED --> BE_QWEN
-BE_SERVER --> BE_DB
-BE_SERVER --> BE_DATA
-BE_SERVER --> BE_BRACKET
-BE_DATA --> DS_API
-BE_QWEN --> DASHSCOPE
+Browser["Browser"] --> FE
+FE --> BE
+BE --> DB
+BE --> API
+BE --> QWEN
 ```
 
 **Diagram sources**
-- [backend/server.js:1-680](file://backend/server.js#L1-L680)
-- [backend/services/predictionEngine.js:1-1020](file://backend/services/predictionEngine.js#L1-L1020)
-- [backend/services/agents/orchestratorAgent.js:1-471](file://backend/services/agents/orchestratorAgent.js#L1-L471)
-- [backend/services/agents/agentFramework.js:1-576](file://backend/services/agents/agentFramework.js#L1-L576)
+- [docker-compose.yml:1-34](file://docker-compose.yml#L1-L34)
+- [frontend/nginx.conf.template:1-25](file://frontend/nginx.conf.template#L1-L25)
+- [backend/server.js:1-724](file://backend/server.js#L1-L724)
+- [backend/services/dataService.js:1-602](file://backend/services/dataService.js#L1-L602)
 - [backend/services/qwenClient.js:1-123](file://backend/services/qwenClient.js#L1-L123)
-- [backend/database/db.js:1-252](file://backend/database/db.js#L1-L252)
-- [backend/services/dataService.js:1-583](file://backend/services/dataService.js#L1-L583)
-- [backend/services/bracketService.js:1-1080](file://backend/services/bracketService.js#L1-L1080)
-- [frontend/src/api/client.js:1-50](file://frontend/src/api/client.js#L1-L50)
-- [frontend/src/App.jsx:1-284](file://frontend/src/App.jsx#L1-L284)
 
 **Section sources**
-- [README.md:1-263](file://README.md#L1-L263)
+- [README.md:153-209](file://README.md#L153-L209)
 - [docker-compose.yml:1-34](file://docker-compose.yml#L1-L34)
 
 ## Core Components
-- REST API Server: Central Express server exposing endpoints for teams, matches, predictions, tournaments, analytics, and synchronization.
-- Prediction Engine: Implements Dixon-Coles bivariate Poisson backbone with log-pool blending and optional multi-agent Qwen integration.
-- Multi-Agent Orchestration: Coordinates five specialized agents (Statistical, Form, H2H, Intel, Lineup) with conflict detection and negotiation.
-- Data Services: Integrates football-data.org API and web scraping for live data, with caching and anti-hallucination checks.
-- Bracket Service: Manages group-to-knockout progression, third-place qualification, and Monte Carlo simulations.
-- Frontend Application: React SPA with routing, theming, i18n, and real-time prediction visualization.
-- Database: SQLite with WAL mode, migrations, and comprehensive schema for teams, matches, predictions, and agent sessions.
+- Frontend (React SPA)
+  - Routing and navigation handled by React Router.
+  - API client wraps Axios with a base URL pointing to the backend /api.
+  - Theme and language toggles managed via React Context providers.
+- Backend (Express API)
+  - REST endpoints for teams, groups, matches, predictions, tournament bracket, analytics, and admin-like sync endpoints.
+  - SQLite database with WAL mode and migrations for schema and model configuration.
+  - Cron jobs for live result synchronization, prediction regeneration, and lineup fetching.
+  - Prediction engine with a single-model backbone and multi-agent extension.
+  - Qwen client for DashScope API calls with retry logic and ping health checks.
+  - Data service orchestrating live data fetching from football-data.org and web scraping.
+- AI Orchestration
+  - Orchestrator coordinates five specialized agents (Statistical, Form, H2H, Intel, Lineup) in parallel.
+  - Conflict detection and negotiation with weight adjustments and log-pool blending.
+  - Session logging for reproducibility and transparency.
+- Infrastructure
+  - Docker Compose builds and runs backend and frontend containers.
+  - Nginx reverse proxy forwards /api to backend and serves static assets.
+  - Optional HTTPS via Certbot/Let’s Encrypt using ACME challenges.
 
 **Section sources**
-- [backend/server.js:24-680](file://backend/server.js#L24-L680)
-- [backend/services/predictionEngine.js:1-1020](file://backend/services/predictionEngine.js#L1-L1020)
-- [backend/services/agents/orchestratorAgent.js:1-471](file://backend/services/agents/orchestratorAgent.js#L1-L471)
-- [backend/services/agents/agentFramework.js:1-576](file://backend/services/agents/agentFramework.js#L1-L576)
-- [backend/services/dataService.js:1-583](file://backend/services/dataService.js#L1-L583)
-- [backend/services/bracketService.js:1-1080](file://backend/services/bracketService.js#L1-L1080)
-- [backend/database/db.js:23-252](file://backend/database/db.js#L23-L252)
-- [frontend/src/api/client.js:1-50](file://frontend/src/api/client.js#L1-L50)
 - [frontend/src/App.jsx:1-284](file://frontend/src/App.jsx#L1-L284)
+- [frontend/src/api/client.js:1-50](file://frontend/src/api/client.js#L1-L50)
+- [backend/server.js:1-724](file://backend/server.js#L1-L724)
+- [backend/database/db.js:1-252](file://backend/database/db.js#L1-L252)
+- [backend/services/predictionEngine.js:1-1046](file://backend/services/predictionEngine.js#L1-L1046)
+- [backend/services/agents/orchestratorAgent.js:1-502](file://backend/services/agents/orchestratorAgent.js#L1-L502)
+- [backend/services/qwenClient.js:1-123](file://backend/services/qwenClient.js#L1-L123)
+- [backend/services/dataService.js:1-602](file://backend/services/dataService.js#L1-L602)
+- [frontend/nginx.conf.template:1-25](file://frontend/nginx.conf.template#L1-L25)
+- [backend/Dockerfile:1-8](file://backend/Dockerfile#L1-L8)
+- [frontend/Dockerfile:1-18](file://frontend/Dockerfile#L1-L18)
 
 ## Architecture Overview
-The system employs a microservices-like separation:
-- Prediction Engine: Core probabilistic model and blending logic
-- Data Services: Live data ingestion and caching
-- UI Layer: React SPA consuming REST endpoints
+The system employs a microservice-style backend with a React frontend, connected through a reverse proxy. The backend encapsulates business logic, data orchestration, AI prediction, and persistence. External integrations include a football-data.org API (optional) and Alibaba Cloud DashScope Qwen models. A cron-driven pipeline keeps predictions fresh and synchronized with live results.
 
 ```mermaid
 graph TB
-CLIENT["Browser (React SPA)"]
-NGINX["Nginx Reverse Proxy"]
-FRONTEND["Frontend Container"]
-BACKEND["Backend Container"]
-SQLITE["SQLite Database<br/>WAL Mode"]
-DASHSCOPE["DashScope Qwen API"]
-CLIENT --> NGINX
-NGINX --> FRONTEND
-NGINX --> BACKEND
-FRONTEND --> BACKEND
-BACKEND --> SQLITE
-BACKEND --> DASHSCOPE
+UI["React SPA<br/>frontend/src/App.jsx"] --> API["Express API<br/>backend/server.js"]
+API --> DB["SQLite DB<br/>backend/database/db.js"]
+API --> DS["Data Service<br/>backend/services/dataService.js"]
+API --> PE["Prediction Engine<br/>backend/services/predictionEngine.js"]
+PE --> OA["Orchestrator Agent<br/>backend/services/agents/orchestratorAgent.js"]
+OA --> QWEN["Qwen Client<br/>backend/services/qwenClient.js"]
+DS --> EXT1["football-data.org API"]
+DS --> EXT2["Web Scraping"]
+Nginx["Nginx Reverse Proxy<br/>frontend/nginx.conf.template"] --> API
+Nginx --> UI
 ```
 
 **Diagram sources**
-- [docker-compose.yml:1-34](file://docker-compose.yml#L1-L34)
-- [backend/server.js:1-680](file://backend/server.js#L1-L680)
-- [backend/database/db.js:10-21](file://backend/database/db.js#L10-L21)
+- [frontend/src/App.jsx:1-284](file://frontend/src/App.jsx#L1-L284)
+- [backend/server.js:1-724](file://backend/server.js#L1-L724)
+- [backend/database/db.js:1-252](file://backend/database/db.js#L1-L252)
+- [backend/services/dataService.js:1-602](file://backend/services/dataService.js#L1-L602)
+- [backend/services/predictionEngine.js:1-1046](file://backend/services/predictionEngine.js#L1-L1046)
+- [backend/services/agents/orchestratorAgent.js:1-502](file://backend/services/agents/orchestratorAgent.js#L1-L502)
+- [backend/services/qwenClient.js:1-123](file://backend/services/qwenClient.js#L1-L123)
+- [frontend/nginx.conf.template:1-25](file://frontend/nginx.conf.template#L1-L25)
 
 ## Detailed Component Analysis
 
-### REST API Layer
-The backend exposes a comprehensive REST API with endpoints for:
-- Teams and group standings
-- Matches (list, today, upcoming, upset watch)
-- Predictions (single match, batch generation)
-- Tournament bracket and simulations
-- Analytics (accuracy, agent performance)
-- Live result synchronization
+### Microservice Separation: Frontend and Backend
+- Frontend
+  - SPA with routing for dashboard, schedule, groups, tournament, predictions, and team detail.
+  - API client constructs URLs under /api and supports refresh and language parameters.
+- Backend
+  - Express server with CORS configured to the frontend origin.
+  - Static serving of built frontend assets in production.
+  - Comprehensive REST API for all UI needs.
 
 ```mermaid
 sequenceDiagram
 participant Browser as "Browser"
-participant API as "Express Server"
-participant DB as "SQLite (WAL)"
-participant Qwen as "DashScope Qwen"
-Browser->>API : GET /api/matches/ : id/prediction
-API->>DB : Load match + teams
-alt USE_MULTI_AGENT=true
-API->>Qwen : Chat completions (5 agents)
-Qwen-->>API : Structured outputs
-API->>DB : Save agent session + prediction
-else Single-agent mode
-API->>DB : Compute backbone + signals
-API->>Qwen : Insight generation (fallback)
-Qwen-->>API : Insight text
-API->>DB : Save prediction
-end
-API-->>Browser : Prediction JSON
+participant Nginx as "Nginx"
+participant API as "Express API"
+participant DB as "SQLite"
+Browser->>Nginx : GET / (SPA)
+Nginx-->>Browser : index.html + assets
+Browser->>Nginx : GET /api/teams
+Nginx->>API : proxy /api/teams
+API->>DB : SELECT teams
+DB-->>API : rows
+API-->>Nginx : JSON
+Nginx-->>Browser : JSON
 ```
 
 **Diagram sources**
-- [backend/server.js:326-341](file://backend/server.js#L326-L341)
-- [backend/services/predictionEngine.js:665-800](file://backend/services/predictionEngine.js#L665-L800)
-- [backend/services/agents/orchestratorAgent.js:288-468](file://backend/services/agents/orchestratorAgent.js#L288-L468)
-- [backend/services/qwenClient.js:53-101](file://backend/services/qwenClient.js#L53-L101)
-
-**Section sources**
-- [backend/server.js:24-680](file://backend/server.js#L24-L680)
-
-### Multi-Agent Prediction System
-The multi-agent system coordinates five specialized agents:
-- Statistical Agent: Interprets Dixon-Coles backbone outputs
-- Form Agent: Evaluates recent form with competition weighting
-- H2H Agent: Head-to-head record analysis
-- Intel Agent: Injuries, motivation, and squad rotation
-- Lineup Agent: Confirmed starting XI strength
-
-```mermaid
-classDiagram
-class Agent {
-+string name
-+string role
-+string model
-+run(userMessage) AgentOutput
-+challenge(own, opposing, delta) AgentOutput
-}
-class AgentSession {
-+string sessionId
-+dispatch(agentTasks) AgentOutput[]
-+detectConflicts() Conflict[]
-+negotiate(agentMap) void
-+buildFinalOutputs() FinalOutput[]
-+save(method) string
-}
-class OrchestratorAgent {
-+runMultiAgentPrediction(matchId, precomputed) Prediction
-}
-AgentSession --> Agent : "coordinates"
-OrchestratorAgent --> AgentSession : "creates"
-OrchestratorAgent --> Agent : "manages"
-```
-
-**Diagram sources**
-- [backend/services/agents/agentFramework.js:201-576](file://backend/services/agents/agentFramework.js#L201-L576)
-- [backend/services/agents/orchestratorAgent.js:288-468](file://backend/services/agents/orchestratorAgent.js#L288-L468)
-
-**Section sources**
-- [backend/services/agents/orchestratorAgent.js:1-471](file://backend/services/agents/orchestratorAgent.js#L1-L471)
-- [backend/services/agents/agentFramework.js:1-576](file://backend/services/agents/agentFramework.js#L1-L576)
-
-### Database Architecture
-The database uses SQLite with WAL mode for concurrent access:
-- Teams, Matches, Predictions, Model Performance, Elo History, Suspensions
-- Agent Sessions, Messages, and Conflicts for multi-agent tracing
-- Model Config for tunable weights and flags
-- Migrations for evolving schema
-
-```mermaid
-erDiagram
-TEAMS {
-text id PK
-text name
-text flag
-text group_code
-integer fifa_rank
-real elo
-integer gs_played
-integer gs_pts
-}
-MATCHES {
-text id PK
-text stage
-text group_code
-text home_team FK
-text away_team FK
-text status
-date scheduled_date
-text scheduled_time
-text venue
-}
-PREDICTIONS {
-integer id PK
-text match_id FK
-text generated_at
-real prob_home
-real prob_draw
-real prob_away
-text most_likely_score
-text confidence
-text methodology
-text agent_session_id
-}
-AGENT_SESSIONS {
-text id PK
-text match_id FK
-text agents_used
-integer rounds
-integer conflicts_detected
-integer conflicts_resolved
-text synthesis_method
-integer wall_time_ms
-}
-TEAMS ||--o{ MATCHES : "home_team/away_team"
-MATCHES ||--o{ PREDICTIONS : "match_id"
-MATCHES ||--o{ AGENT_SESSIONS : "match_id"
-```
-
-**Diagram sources**
-- [backend/database/db.js:23-209](file://backend/database/db.js#L23-L209)
-
-**Section sources**
+- [frontend/nginx.conf.template:13-19](file://frontend/nginx.conf.template#L13-L19)
+- [backend/server.js:24-36](file://backend/server.js#L24-L36)
 - [backend/database/db.js:1-252](file://backend/database/db.js#L1-L252)
 
-### Frontend Integration
-The React frontend consumes the REST API through a typed client:
-- Pages: Dashboard, Schedule, MatchDetail, Groups, Tournament, Predictions, TeamDetail
-- Components: Reusable UI elements with theming and i18n
-- API Client: Axios wrapper with environment-driven base URL
-
-```mermaid
-sequenceDiagram
-participant Page as "MatchDetail Page"
-participant API as "API Client"
-participant Server as "Express Server"
-participant DB as "SQLite"
-Page->>API : getPrediction(id, refresh, lang)
-API->>Server : GET /api/matches/ : id/prediction?refresh&lang
-Server->>DB : Load prediction + factors
-Server-->>API : Prediction JSON
-API-->>Page : Render prediction + history
-```
-
-**Diagram sources**
-- [frontend/src/pages/MatchDetail.jsx:723-760](file://frontend/src/pages/MatchDetail.jsx#L723-L760)
-- [frontend/src/api/client.js:19-25](file://frontend/src/api/client.js#L19-L25)
-- [backend/server.js:326-341](file://backend/server.js#L326-L341)
-
 **Section sources**
-- [frontend/src/api/client.js:1-50](file://frontend/src/api/client.js#L1-L50)
 - [frontend/src/App.jsx:1-284](file://frontend/src/App.jsx#L1-L284)
-- [frontend/src/pages/MatchDetail.jsx:1-800](file://frontend/src/pages/MatchDetail.jsx#L1-L800)
+- [frontend/src/api/client.js:1-50](file://frontend/src/api/client.js#L1-L50)
+- [backend/server.js:18-682](file://backend/server.js#L18-L682)
+- [frontend/nginx.conf.template:1-25](file://frontend/nginx.conf.template#L1-L25)
 
-### AI Integration and External APIs
-- DashScope Qwen: OpenAI-compatible endpoint for chat completions
-- Football-data.org: Optional live scores and form data
-- Web Scraping: Fallback for injuries, form, and lineups with anti-hallucination filtering
+### Data Flow Architecture
+- External APIs and Web Scraping
+  - Data service fetches team form and head-to-head records from football-data.org when available.
+  - Falls back to web scraping and synthetic generation when API keys are absent.
+  - Parses injury and motivation intelligence using Qwen with anti-hallucination verification.
+- Internal Processing
+  - Prediction engine computes Dixon-Coles backbone probabilities and blends adjustment signals.
+  - Multi-agent system orchestrates specialists and negotiates differences.
+- Persistence
+  - SQLite schema includes teams, matches, predictions, model performance, ELO history, suspensions, web intel cache, model configuration, and multi-agent session tables.
+- UI Consumption
+  - Frontend queries the backend for teams, matches, predictions, and analytics.
 
 ```mermaid
 flowchart TD
-Start(["Prediction Request"]) --> CheckAgent["USE_MULTI_AGENT flag"]
-CheckAgent --> |true| MultiAgent["Multi-Agent Path"]
-CheckAgent --> |false| SingleAgent["Single-Agent Path"]
-MultiAgent --> FetchData["Fetch H2H/Form/Intel/Lineup"]
-FetchData --> Agents["Dispatch 5 Agents"]
-Agents --> Conflict{"Conflicts Detected?"}
-Conflict --> |Yes| Negotiate["Negotiation Round"]
-Conflict --> |No| Blend["Log-Pool Blend"]
+Start(["Request Prediction"]) --> Fetch["Fetch Domain Data<br/>Form/H2H/Intel/Lineup"]
+Fetch --> Backbone["Compute Backboneprobs (DC Poisson)"]
+Backbone --> Agents["Dispatch Specialized Agents"]
+Agents --> Conflicts{"Conflicts Detected?"}
+Conflicts --> |Yes| Negotiate["Negotiation Round"]
+Conflicts --> |No| Blend["Log-Pool Blend"]
 Negotiate --> Blend
-SingleAgent --> Blend
-Blend --> Insight["Qwen Insight Generation"]
-Insight --> Save["Save Prediction + Agent Session"]
-Save --> End(["Return Prediction"])
+Blend --> Insight["Generate Insight (Qwen)"]
+Insight --> Persist["Persist Prediction + Session"]
+Persist --> End(["Return Prediction"])
 ```
 
 **Diagram sources**
-- [backend/services/predictionEngine.js:55-62](file://backend/services/predictionEngine.js#L55-L62)
-- [backend/services/agents/orchestratorAgent.js:300-382](file://backend/services/agents/orchestratorAgent.js#L300-L382)
-- [backend/services/dataService.js:413-490](file://backend/services/dataService.js#L413-L490)
-- [backend/services/qwenClient.js:53-101](file://backend/services/qwenClient.js#L53-L101)
+- [backend/services/dataService.js:1-602](file://backend/services/dataService.js#L1-L602)
+- [backend/services/predictionEngine.js:1-1046](file://backend/services/predictionEngine.js#L1-L1046)
+- [backend/services/agents/orchestratorAgent.js:1-502](file://backend/services/agents/orchestratorAgent.js#L1-L502)
+- [backend/database/db.js:167-207](file://backend/database/db.js#L167-L207)
 
 **Section sources**
+- [backend/services/dataService.js:1-602](file://backend/services/dataService.js#L1-L602)
+- [backend/services/predictionEngine.js:1-1046](file://backend/services/predictionEngine.js#L1-L1046)
+- [backend/database/db.js:23-207](file://backend/database/db.js#L23-L207)
+
+### AI Integration Layer: Multi-Agent Orchestration
+- Agents
+  - Statistical: interprets precomputed DC backbone outputs.
+  - Form: evaluates recent form with competition weighting.
+  - H2H: real 47k match dataset interpretation.
+  - Intel: injury/news parsing with anti-hallucination filtering.
+  - Lineup: confirmed XI strength analysis (~60 min before kickoff).
+- Orchestrator
+  - Builds match context, pre-fetches data, dispatches agents in parallel, detects conflicts (≥20% delta), negotiates, adjusts weights, blends with log-pool, applies temperature scaling, reweights score matrix, generates insight, and persists session and prediction.
+- Qwen Models
+  - Orchestrator uses qwen-plus; agents use qwen-plus or qwen-turbo depending on workload.
+
+```mermaid
+classDiagram
+class OrchestratorAgent {
++runMultiAgentPrediction(matchId, precomputed)
+-buildMatchContext()
+-buildAgentFactors()
+-generateOrchestratorInsight()
+-savePrediction()
+}
+class StatisticalAgent {
++fetchDomainData()
++buildPrompt()
+}
+class FormAgent {
++fetchDomainData()
++buildPrompt()
+}
+class H2HAgent {
++fetchDomainData()
++buildPrompt()
+}
+class IntelAgent {
++fetchDomainData()
++buildPrompt()
+}
+class LineupAgent {
++fetchDomainData()
++buildPrompt()
+}
+OrchestratorAgent --> StatisticalAgent : "dispatch"
+OrchestratorAgent --> FormAgent : "dispatch"
+OrchestratorAgent --> H2HAgent : "dispatch"
+OrchestratorAgent --> IntelAgent : "dispatch"
+OrchestratorAgent --> LineupAgent : "dispatch"
+```
+
+**Diagram sources**
+- [backend/services/agents/orchestratorAgent.js:1-502](file://backend/services/agents/orchestratorAgent.js#L1-L502)
+- [backend/services/agents/statisticalAgent.js](file://backend/services/agents/statisticalAgent.js)
+- [backend/services/agents/formAgent.js](file://backend/services/agents/formAgent.js)
+- [backend/services/agents/h2hAgent.js](file://backend/services/agents/h2hAgent.js)
+- [backend/services/agents/intelAgent.js](file://backend/services/agents/intelAgent.js)
+- [backend/services/agents/lineupAgent.js](file://backend/services/agents/lineupAgent.js)
+
+**Section sources**
+- [README.md:18-104](file://README.md#L18-L104)
+- [backend/services/agents/orchestratorAgent.js:1-502](file://backend/services/agents/orchestratorAgent.js#L1-L502)
 - [backend/services/qwenClient.js:1-123](file://backend/services/qwenClient.js#L1-L123)
-- [backend/services/dataService.js:1-583](file://backend/services/dataService.js#L1-L583)
+
+### Cron Job System for Automated Data Synchronization and Prediction Updates
+- Live Results Sync
+  - Every 5 minutes during tournament: flips in-progress matches to LIVE and records final scores for finished matches.
+- Prediction Regeneration
+  - Hourly cron runs across SGT daytime windows to regenerate predictions for the next three match days, respecting cooldowns and tournament end date.
+- Lineup Fetching
+  - Every 15 minutes, fetches lineups for matches within 2 hours of kickoff and re-runs predictions incorporating lineup signals.
+- Startup Behavior
+  - On startup, fills missing predictions for the next three match days.
+
+```mermaid
+flowchart TD
+Tick["Cron Tick"] --> Live["Sync Live Matches (5 min)"]
+Tick --> Pred["Regenerate Predictions (hourly)"]
+Tick --> Lineup["Fetch Lineups (15 min)"]
+Pred --> NextDays["Select Next 3 Match Days"]
+NextDays --> Cooldown{"Within Cooldown?"}
+Cooldown --> |Yes| Skip["Skip Match"]
+Cooldown --> |No| Predict["Run Prediction"]
+Predict --> MaybeLineup{"Lineup Available?"}
+MaybeLineup --> |Yes| RePredict["Re-run Prediction with Lineup"]
+MaybeLineup --> |No| Done["Done"]
+RePredict --> Done
+```
+
+**Diagram sources**
+- [backend/server.js:584-675](file://backend/server.js#L584-L675)
+
+**Section sources**
+- [backend/server.js:584-675](file://backend/server.js#L584-L675)
+
+### Containerized Deployment with Docker Compose and Nginx Reverse Proxy
+- Services
+  - backend: Node.js app with production environment and DB volume mounted at /data.
+  - frontend: Nginx serving static assets, reverse proxy to backend, with optional HTTPS via Certbot volumes.
+- Ports
+  - Frontend exposes 80/443; backend is internal to the frontend container.
+- Environment
+  - FRONTEND_URL controls CORS; BACKEND_URL points from frontend to backend service.
+- Build and Entrypoint
+  - Backend Dockerfile installs deps and starts with npm start.
+  - Frontend Dockerfile builds SPA, installs Nginx + Certbot, copies templates and entrypoint script.
+
+```mermaid
+graph TB
+subgraph "Docker Compose"
+B["backend service"]
+F["frontend service"]
+end
+subgraph "Volumes"
+V1["db_data"]
+V2["certbot_etc"]
+V3["certbot_var"]
+end
+F --> |proxy /api| B
+F --> |serve| Static["/usr/share/nginx/html"]
+F --- V2
+F --- V3
+B --- V1
+```
+
+**Diagram sources**
+- [docker-compose.yml:1-34](file://docker-compose.yml#L1-L34)
+- [backend/Dockerfile:1-8](file://backend/Dockerfile#L1-L8)
+- [frontend/Dockerfile:1-18](file://frontend/Dockerfile#L1-L18)
+
+**Section sources**
+- [docker-compose.yml:1-34](file://docker-compose.yml#L1-L34)
+- [frontend/nginx.conf.template:1-25](file://frontend/nginx.conf.template#L1-L25)
+- [backend/Dockerfile:1-8](file://backend/Dockerfile#L1-L8)
+- [frontend/Dockerfile:1-18](file://frontend/Dockerfile#L1-L18)
 
 ## Dependency Analysis
-The system exhibits clean modularity with explicit dependencies:
-- Frontend depends on backend REST endpoints
-- Backend depends on SQLite for persistence
-- Backend depends on DashScope Qwen for AI inference
-- Backend depends on football-data.org for live data (optional)
-- Multi-agent orchestration depends on prediction engine and Qwen client
+- Technology Stack
+  - Backend: Node.js, Express, SQLite (node-sqlite3-wasm), axios, cheerio, cors, dotenv, node-cron.
+  - Frontend: React 18, Vite, Tailwind CSS, axios, react-router-dom, recharts.
+  - AI: DashScope (Qwen) via OpenAI-compatible endpoint.
+  - Data: football-data.org API (optional), web scraping.
+  - Deployment: Docker, Docker Compose, Nginx, Certbot.
+- External Dependencies
+  - Qwen models: qwen-max, qwen-plus, qwen-turbo.
+  - Third-party APIs: football-data.org.
+- Coupling and Cohesion
+  - Backend maintains high cohesion around prediction, data, and orchestration; clear separation from frontend.
+  - Data service isolates external integrations and caching.
+  - Orchestrator decouples agent logic while coordinating shared resources.
 
 ```mermaid
 graph LR
-FE["Frontend"] --> API["REST API"]
-API --> PRED["Prediction Engine"]
-PRED --> ORCH["Orchestrator"]
-ORCH --> AGFW["Agent Framework"]
-ORCH --> QWEN["Qwen Client"]
-PRED --> QWEN
-API --> DATA["Data Service"]
-API --> BRACKET["Bracket Service"]
-API --> DB["SQLite"]
-DATA --> DS_API["football-data.org"]
-DATA --> QWEN
-QWEN --> DASHSCOPE["DashScope"]
+FE["frontend/src/api/client.js"] --> API["backend/server.js"]
+API --> DS["dataService.js"]
+API --> PE["predictionEngine.js"]
+PE --> OA["agents/orchestratorAgent.js"]
+OA --> QC["qwenClient.js"]
+API --> DB["db.js"]
 ```
 
 **Diagram sources**
 - [frontend/src/api/client.js:1-50](file://frontend/src/api/client.js#L1-L50)
-- [backend/server.js:1-680](file://backend/server.js#L1-L680)
-- [backend/services/predictionEngine.js:1-1020](file://backend/services/predictionEngine.js#L1-L1020)
-- [backend/services/agents/orchestratorAgent.js:1-471](file://backend/services/agents/orchestratorAgent.js#L1-L471)
-- [backend/services/agents/agentFramework.js:1-576](file://backend/services/agents/agentFramework.js#L1-L576)
+- [backend/server.js:1-724](file://backend/server.js#L1-L724)
+- [backend/services/dataService.js:1-602](file://backend/services/dataService.js#L1-L602)
+- [backend/services/predictionEngine.js:1-1046](file://backend/services/predictionEngine.js#L1-L1046)
+- [backend/services/agents/orchestratorAgent.js:1-502](file://backend/services/agents/orchestratorAgent.js#L1-L502)
 - [backend/services/qwenClient.js:1-123](file://backend/services/qwenClient.js#L1-L123)
-- [backend/services/dataService.js:1-583](file://backend/services/dataService.js#L1-L583)
-- [backend/services/bracketService.js:1-1080](file://backend/services/bracketService.js#L1-L1080)
 - [backend/database/db.js:1-252](file://backend/database/db.js#L1-L252)
 
 **Section sources**
-- [backend/package.json:14-31](file://backend/package.json#L14-L31)
-- [frontend/package.json:38-71](file://frontend/package.json#L38-L71)
+- [backend/package.json:14-30](file://backend/package.json#L14-L30)
+- [frontend/package.json:38-68](file://frontend/package.json#L38-L68)
 
 ## Performance Considerations
-- SQLite WAL Mode: Improves concurrency for read-heavy prediction workloads
-- Caching: Web intelligence cache with configurable TTLs reduces external API calls
-- Parallelization: Multi-agent orchestration executes agents concurrently
-- Background Jobs: Scheduled tasks for prediction regeneration and live result sync
-- CDN/Reverse Proxy: Nginx optimizes static assets and SSL termination
-- Containerization: Isolates services and enables horizontal scaling
+- Prediction Engine
+  - Log-pool blending preserves confidence and avoids arithmetic averaging pitfalls.
+  - Temperature scaling and Dixon-Coles ρ calibration improve reliability.
+- Multi-Agent Orchestration
+  - Parallel agent dispatch reduces latency; negotiation is bounded and optional.
+- Data Fetching
+  - Caching reduces repeated network calls; fallbacks maintain availability.
+- Database
+  - WAL mode and foreign keys tuned for concurrent access; migrations ensure schema evolution.
+- Frontend
+  - Static asset delivery via Nginx; SPA routing handled by Nginx try_files.
 
 [No sources needed since this section provides general guidance]
 
 ## Troubleshooting Guide
-Common issues and resolutions:
-- Missing DashScope API Key: Falls back to template-generated insights; multi-agent disabled
-- Missing football-data.org API Key: Uses synthetic form data and static H2H defaults
-- SQLite Lock Issues: WAL mode and busy_timeout configured; ensure proper volume mounting
-- CORS Errors: Configure FRONTEND_URL environment variable
-- Agent Session Failures: Check Qwen model availability and retry logic
-- Live Sync Failures: Verify API key and team ID mappings
+- CORS Issues
+  - Verify FRONTEND_URL environment variable matches the browser origin.
+- Qwen API Failures
+  - Ensure DASHSCOPE_API_KEY is set; use ping() to validate connectivity.
+- Live Sync Failures
+  - Confirm FOOTBALL_DATA_API_KEY is configured; check API rate limits and team ID mapping.
+- Prediction Stagnation
+  - Use generate-all endpoint or inspect cron logs; verify tournament end date guard.
+- Database Locks
+  - node-sqlite3-wasm removes stale locks; ensure sufficient disk space and permissions.
 
 **Section sources**
-- [backend/services/qwenClient.js:60-101](file://backend/services/qwenClient.js#L60-L101)
-- [backend/services/dataService.js:495-580](file://backend/services/dataService.js#L495-L580)
-- [backend/database/db.js:10-21](file://backend/database/db.js#L10-L21)
 - [backend/server.js:21-22](file://backend/server.js#L21-L22)
+- [backend/services/qwenClient.js:60-101](file://backend/services/qwenClient.js#L60-L101)
+- [backend/services/dataService.js:18-28](file://backend/services/dataService.js#L18-L28)
+- [backend/server.js:584-675](file://backend/server.js#L584-L675)
+- [backend/database/db.js:10-21](file://backend/database/db.js#L10-L21)
 
 ## Conclusion
-WC26-Qwen-Qoder demonstrates a robust, scalable architecture combining a React frontend, Node.js/Express backend, SQLite persistence, and a powerful multi-agent Qwen prediction system. The modular design, containerized deployment, and comprehensive AI integration deliver accurate, explainable predictions for the 2026 FIFA World Cup while maintaining maintainability and performance.
+The World Cup 2026 Prediction App combines a modern React frontend with a robust Node.js/Express backend, a SQLite-backed data layer, and a sophisticated multi-agent AI system powered by Qwen. The Docker Compose deployment with Nginx reverse proxy enables straightforward production rollout, while cron jobs automate data synchronization and prediction maintenance. The architecture balances modularity, reliability, and extensibility, with clear separation of concerns and strong operational safeguards.
+
+[No sources needed since this section summarizes without analyzing specific files]
+
+## Appendices
+
+### System Context Diagrams
+- Component Interactions
+```mermaid
+graph TB
+Browser["Browser"] --> Nginx["Nginx"]
+Nginx --> FE["frontend/src/App.jsx"]
+Nginx --> API["backend/server.js"]
+API --> DS["dataService.js"]
+API --> PE["predictionEngine.js"]
+PE --> OA["agents/orchestratorAgent.js"]
+OA --> QC["qwenClient.js"]
+API --> DB["db.js"]
+DS --> Ext1["football-data.org"]
+DS --> Ext2["Web Scraping"]
+```
+- Data Flow
+```mermaid
+flowchart LR
+Ext["External APIs/Scrapers"] --> DS["Data Service"]
+DS --> DB["SQLite"]
+DB --> API["Express API"]
+API --> FE["React UI"]
+```
+
+**Diagram sources**
+- [frontend/src/App.jsx:1-284](file://frontend/src/App.jsx#L1-L284)
+- [frontend/nginx.conf.template:1-25](file://frontend/nginx.conf.template#L1-L25)
+- [backend/server.js:1-724](file://backend/server.js#L1-L724)
+- [backend/services/dataService.js:1-602](file://backend/services/dataService.js#L1-L602)
+- [backend/services/predictionEngine.js:1-1046](file://backend/services/predictionEngine.js#L1-L1046)
+- [backend/services/agents/orchestratorAgent.js:1-502](file://backend/services/agents/orchestratorAgent.js#L1-L502)
+- [backend/services/qwenClient.js:1-123](file://backend/services/qwenClient.js#L1-L123)
+- [backend/database/db.js:1-252](file://backend/database/db.js#L1-L252)
+
+### Deployment Topology
+- Single-host ECS deployment via Docker Compose with Nginx reverse proxy and optional HTTPS via Certbot/Let’s Encrypt.
+- Environment variables for API keys, CORS, and backend port.
+- Automated provisioning and deployment scripts for Alibaba Cloud ECS.
+
+**Section sources**
+- [README.md:231-262](file://README.md#L231-L262)
+- [docker-compose.yml:1-34](file://docker-compose.yml#L1-L34)
+
+### Scalability Considerations
+- Horizontal Scaling
+  - Stateless backend allows load balancing behind Nginx; persist state in SQLite volume.
+- Caching
+  - Web intel cache TTLs reduce upstream load; consider Redis cache for high-traffic periods.
+- AI Throughput
+  - Use qwen-turbo for high-throughput agents; reserve qwen-plus for complex reasoning; monitor QPS and latency.
+- Database
+  - Monitor WAL growth and vacuum periodically; consider read replicas for analytics queries.
+
+[No sources needed since this section provides general guidance]
+
+### Security, Monitoring, and Disaster Recovery
+- Security
+  - CORS restricted to FRONTEND_URL; API keys injected via environment variables; Qwen client validates presence.
+- Monitoring
+  - Enable logging for cron tasks and prediction runs; track Qwen latency and error rates.
+- Disaster Recovery
+  - Persistent volumes for DB and Certbot; backup SQLite database regularly; redeploy from image layers.
+
+**Section sources**
+- [backend/server.js:21-22](file://backend/server.js#L21-L22)
+- [backend/services/qwenClient.js:60-101](file://backend/services/qwenClient.js#L60-L101)
+- [docker-compose.yml:11-12](file://docker-compose.yml#L11-L12)
+- [frontend/Dockerfile:13-14](file://frontend/Dockerfile#L13-L14)
+
+### Technology Stack and Third-Party Dependencies
+- Backend: Node.js, Express, SQLite (node-sqlite3-wasm), axios, cheerio, cors, dotenv, node-cron.
+- Frontend: React 18, Vite, Tailwind CSS, axios, react-router-dom, recharts.
+- AI: DashScope (Qwen) models (qwen-max, qwen-plus, qwen-turbo).
+- Data: football-data.org API (optional), web scraping.
+- Infrastructure: Docker, Docker Compose, Nginx, Certbot/Let’s Encrypt.
+
+**Section sources**
+- [backend/package.json:14-30](file://backend/package.json#L14-L30)
+- [frontend/package.json:38-68](file://frontend/package.json#L38-L68)
+- [README.md:106-112](file://README.md#L106-L112)

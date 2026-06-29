@@ -1,4 +1,0 @@
-- The root module defines the operational boundary for the full-stack application, wiring the `backend` (Node.js/Express) and `frontend` (React/Vite) via `docker-compose.yml` for production and `start.sh` for local development.
-- Cross-child communication is enforced through environment variable contracts (`BACKEND_URL`, `FRONTEND_URL`) and API endpoint expectations, with the frontend proxying requests to the backend service.
-- Deployment orchestration is centralized in `deploy.sh` and `setup-ecs.sh`, which handle synchronized code syncing, container rebuilding, and HTTPS provisioning for both children on Alibaba Cloud ECS.
-- Shared infrastructure concerns, such as database seeding (`backend/database/seed.js`) and environment configuration (`.env` management), are triggered at the parent level during startup workflows.

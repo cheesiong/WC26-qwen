@@ -3,20 +3,22 @@
 <cite>
 **Referenced Files in This Document**
 - [main.jsx](file://frontend/src/main.jsx)
-- [index.html](file://frontend/index.html)
 - [App.jsx](file://frontend/src/App.jsx)
-- [ThemeContext.jsx](file://frontend/src/contexts/ThemeContext.jsx)
-- [LanguageContext.jsx](file://frontend/src/contexts/LanguageContext.jsx)
-- [translations.js](file://frontend/src/i18n/translations.js)
-- [client.js](file://frontend/src/api/client.js)
 - [vite.config.js](file://frontend/vite.config.js)
 - [tailwind.config.js](file://frontend/tailwind.config.js)
-- [package.json](file://frontend/package.json)
+- [index.css](file://frontend/src/index.css)
+- [ThemeContext.jsx](file://frontend/src/contexts/ThemeContext.jsx)
+- [LanguageContext.jsx](file://frontend/src/contexts/LanguageContext.jsx)
+- [client.js](file://frontend/src/api/client.js)
+- [MatchCard.jsx](file://frontend/src/components/MatchCard.jsx)
+- [GroupTable.jsx](file://frontend/src/components/GroupTable.jsx)
+- [PredictionBar.jsx](file://frontend/src/components/PredictionBar.jsx)
+- [Dashboard.jsx](file://frontend/src/pages/Dashboard.jsx)
+- [Groups.jsx](file://frontend/src/pages/Groups.jsx)
+- [translations.js](file://frontend/src/i18n/translations.js)
 - [sw.js](file://frontend/public/sw.js)
 - [manifest.json](file://frontend/public/manifest.json)
-- [Dashboard.jsx](file://frontend/src/pages/Dashboard.jsx)
-- [FlagImage.jsx](file://frontend/src/components/FlagImage.jsx)
-- [chartColors.js](file://frontend/src/utils/chartColors.js)
+- [package.json](file://frontend/package.json)
 </cite>
 
 ## Table of Contents
@@ -29,395 +31,393 @@
 7. [Performance Considerations](#performance-considerations)
 8. [Troubleshooting Guide](#troubleshooting-guide)
 9. [Conclusion](#conclusion)
-10. [Appendices](#appendices)
 
 ## Introduction
-This document describes the frontend architecture of the WC26-Qwen-Qoder React application. It covers the component hierarchy, page structure, and routing system using React Router; state management patterns via context providers for theme and language; styling architecture with Tailwind CSS and custom themes; internationalization supporting English and Chinese; the build pipeline using Vite; asset and service worker management; responsive design patterns; accessibility considerations; performance optimization techniques; component reusability and prop drilling solutions; and state synchronization with backend APIs.
+This document describes the frontend architecture of the React Single Page Application for the World Cup 2026 Predictor. It explains the component hierarchy starting from the application entry points, routing and page structure, reusable UI components, state management patterns, data fetching strategies, build configuration with Vite, styling approach using Tailwind CSS and custom themes, internationalization, service worker and PWA features, responsive design, accessibility, cross-browser compatibility, component composition patterns, and performance optimizations.
 
 ## Project Structure
-The frontend is organized into modular directories:
-- Public assets and PWA manifests under frontend/public
-- Application bootstrap and HTML template under frontend/src
-- Pages under frontend/src/pages
-- Shared components under frontend/src/components
-- Utilities under frontend/src/utils
-- Internationalization under frontend/src/i18n
-- Context providers under frontend/src/contexts
-- API client under frontend/src/api
+The frontend is organized around a classic React SPA structure with clear separation of concerns:
+- Entry points: main.jsx bootstraps the app with React Strict Mode, Helmet provider, and hydration logic for pre-rendering.
+- Routing: App.jsx defines the navigation and route mapping using React Router DOM.
+- Pages: Feature-specific pages under src/pages implement page-level logic and data fetching.
+- Components: Reusable UI components under src/components encapsulate presentation and partial logic.
+- Contexts: Theme and language contexts manage global state and utilities.
+- API: A centralized client under src/api handles HTTP requests to the backend.
+- Styling: Tailwind CSS with a custom theme extending colors, fonts, shadows, and utilities.
+- Internationalization: Translations under src/i18n provide English and Chinese content.
+- PWA: Service worker and manifest under public configure offline behavior and installability.
 
 ```mermaid
 graph TB
-Root["frontend/"] --> Public["public/"]
-Root --> Src["src/"]
-Src --> Pages["pages/"]
-Src --> Components["components/"]
-Src --> Utils["utils/"]
-Src --> I18N["i18n/"]
-Src --> Contexts["contexts/"]
-Src --> API["api/"]
-Src --> Main["main.jsx"]
-Src --> App["App.jsx"]
-Src --> IndexCSS["index.css"]
-Src --> HTML["index.html"]
-Root --> Vite["vite.config.js"]
-Root --> Tailwind["tailwind.config.js"]
-Root --> Package["package.json"]
-Public --> Manifest["manifest.json"]
-Public --> SW["sw.js"]
+subgraph "Entry"
+MJS["main.jsx"]
+APP["App.jsx"]
+end
+subgraph "Routing"
+ROUTER["React Router DOM"]
+DASH["Dashboard.jsx"]
+GROUPS["Groups.jsx"]
+end
+subgraph "Components"
+MATCH["MatchCard.jsx"]
+TABLE["GroupTable.jsx"]
+BAR["PredictionBar.jsx"]
+end
+subgraph "State Management"
+THEME["ThemeContext.jsx"]
+LANG["LanguageContext.jsx"]
+end
+subgraph "Data Layer"
+API["api/client.js"]
+TRANSL["i18n/translations.js"]
+end
+subgraph "Styling"
+TWCFG["tailwind.config.js"]
+CSS["index.css"]
+end
+subgraph "PWA"
+SW["public/sw.js"]
+MAN["public/manifest.json"]
+end
+MJS --> APP
+APP --> ROUTER
+ROUTER --> DASH
+ROUTER --> GROUPS
+DASH --> MATCH
+DASH --> TABLE
+GROUPS --> TABLE
+MATCH --> BAR
+APP --> THEME
+APP --> LANG
+DASH --> API
+GROUPS --> API
+LANG --> TRANSL
+CSS --> TWCFG
+SW -.-> MAN
 ```
 
 **Diagram sources**
 - [main.jsx:1-22](file://frontend/src/main.jsx#L1-L22)
 - [App.jsx:1-284](file://frontend/src/App.jsx#L1-L284)
-- [vite.config.js:1-26](file://frontend/vite.config.js#L1-L26)
+- [Dashboard.jsx:1-706](file://frontend/src/pages/Dashboard.jsx#L1-L706)
+- [Groups.jsx:1-160](file://frontend/src/pages/Groups.jsx#L1-L160)
+- [MatchCard.jsx:1-175](file://frontend/src/components/MatchCard.jsx#L1-L175)
+- [GroupTable.jsx:1-78](file://frontend/src/components/GroupTable.jsx#L1-L78)
+- [PredictionBar.jsx:1-51](file://frontend/src/components/PredictionBar.jsx#L1-L51)
+- [ThemeContext.jsx:1-27](file://frontend/src/contexts/ThemeContext.jsx#L1-L27)
+- [LanguageContext.jsx:1-69](file://frontend/src/contexts/LanguageContext.jsx#L1-L69)
+- [client.js:1-50](file://frontend/src/api/client.js#L1-L50)
 - [tailwind.config.js:1-161](file://frontend/tailwind.config.js#L1-L161)
-- [package.json:1-72](file://frontend/package.json#L1-L72)
+- [index.css:1-785](file://frontend/src/index.css#L1-L785)
+- [sw.js:1-32](file://frontend/public/sw.js#L1-L32)
+- [manifest.json:1-50](file://frontend/public/manifest.json#L1-L50)
 
 **Section sources**
 - [main.jsx:1-22](file://frontend/src/main.jsx#L1-L22)
-- [index.html:1-34](file://frontend/index.html#L1-L34)
-- [vite.config.js:1-26](file://frontend/vite.config.js#L1-L26)
-- [tailwind.config.js:1-161](file://frontend/tailwind.config.js#L1-L161)
-- [package.json:1-72](file://frontend/package.json#L1-L72)
+- [App.jsx:1-284](file://frontend/src/App.jsx#L1-L284)
 
 ## Core Components
-- Application bootstrap initializes React, Helmet provider, and hydration strategy.
-- App wraps the routing tree with ThemeProvider and LanguageProvider, defines navigation, and renders pages.
-- ThemeContext manages theme state and persistence.
-- LanguageContext provides translation functions and locale-aware date/time helpers.
-- API client encapsulates backend endpoints and request configuration.
-- Tailwind config defines a custom Chinese landscape painting palette and gradients.
+This section documents the primary building blocks of the application.
 
-Key implementation references:
-- Bootstrap and hydration: [main.jsx:1-22](file://frontend/src/main.jsx#L1-L22)
-- Routing and layout: [App.jsx:1-284](file://frontend/src/App.jsx#L1-L284)
-- Theme provider: [ThemeContext.jsx:1-27](file://frontend/src/contexts/ThemeContext.jsx#L1-L27)
-- Language provider and hooks: [LanguageContext.jsx:1-69](file://frontend/src/contexts/LanguageContext.jsx#L1-L69)
-- Translations registry: [translations.js:1-630](file://frontend/src/i18n/translations.js#L1-L630)
-- API client: [client.js:1-50](file://frontend/src/api/client.js#L1-L50)
-- Tailwind customization: [tailwind.config.js:1-161](file://frontend/tailwind.config.js#L1-L161)
+- App.jsx
+  - Provides the top-level layout with desktop and mobile navigation, theme and language toggles, and route definitions.
+  - Uses React Router DOM for declarative routing and nested layouts.
+  - Wraps the app with ThemeProvider and LanguageProvider to enable global state and utilities.
+  - Implements responsive navigation with a desktop header and a mobile bottom tab bar.
+
+- ThemeContext.jsx
+  - Manages theme state (light/dark) with persistence in localStorage.
+  - Applies the 'dark' class to document.documentElement for Tailwind dark mode.
+  - Exposes a toggle function and a hook for consuming components.
+
+- LanguageContext.jsx
+  - Manages language state (en/zh) with persistence in localStorage.
+  - Exposes translation function useT() and helpers for date formatting and team name resolution.
+  - Uses translations.js for localized strings.
+
+- API Client (client.js)
+  - Centralized HTTP client using Axios with a configurable base URL.
+  - Exposes typed functions for teams, matches, groups, tournament data, analytics, and agent sessions.
+  - Supports query parameters for prediction refresh and language selection.
+
+- Component Library
+  - MatchCard.jsx: Presents match metadata, scores, confidence chips, and prediction bar; integrates with language utilities and navigation.
+  - GroupTable.jsx: Renders group standings with flags, points, and top-two indicators.
+  - PredictionBar.jsx: Visualizes predicted outcome probabilities with gradient segments and labels.
+
+- Pages
+  - Dashboard.jsx: Orchestrates hero banners, stats cards, phase timeline, upcoming matches grid, and sidebar picks; performs parallel data fetching.
+  - Groups.jsx: Loads groups, renders group selector tabs, standings table, and group matches.
 
 **Section sources**
-- [main.jsx:1-22](file://frontend/src/main.jsx#L1-L22)
 - [App.jsx:1-284](file://frontend/src/App.jsx#L1-L284)
 - [ThemeContext.jsx:1-27](file://frontend/src/contexts/ThemeContext.jsx#L1-L27)
 - [LanguageContext.jsx:1-69](file://frontend/src/contexts/LanguageContext.jsx#L1-L69)
-- [translations.js:1-630](file://frontend/src/i18n/translations.js#L1-L630)
 - [client.js:1-50](file://frontend/src/api/client.js#L1-L50)
-- [tailwind.config.js:1-161](file://frontend/tailwind.config.js#L1-L161)
+- [MatchCard.jsx:1-175](file://frontend/src/components/MatchCard.jsx#L1-L175)
+- [GroupTable.jsx:1-78](file://frontend/src/components/GroupTable.jsx#L1-L78)
+- [PredictionBar.jsx:1-51](file://frontend/src/components/PredictionBar.jsx#L1-L51)
+- [Dashboard.jsx:1-706](file://frontend/src/pages/Dashboard.jsx#L1-L706)
+- [Groups.jsx:1-160](file://frontend/src/pages/Groups.jsx#L1-L160)
 
 ## Architecture Overview
-The frontend follows a layered architecture:
-- Presentation layer: React components and pages
-- Routing layer: React Router with nested routes and navigation
-- State layer: Context providers for theme and language
-- Services layer: Axios-based API client
-- Styling layer: Tailwind CSS with custom theme tokens and gradients
-- Build and deployment: Vite with pre-rendering and PWA assets
+The application follows a layered architecture:
+- Presentation Layer: React components (pages and reusable components) render UI and handle user interactions.
+- State Management Layer: Context providers supply theme, language, and derived utilities to components.
+- Data Access Layer: API client abstracts HTTP calls and exposes domain-specific functions.
+- Styling Layer: Tailwind CSS with a custom theme and layered CSS utilities for dark mode and decorative elements.
+- Infrastructure Layer: Vite build tooling, PWA configuration, and service worker for offline behavior.
 
 ```mermaid
 graph TB
-Browser["Browser Runtime"] --> ReactRoot["React Root<br/>main.jsx"]
-ReactRoot --> Providers["Providers<br/>Theme + Language"]
-Providers --> Router["React Router<br/>App.jsx"]
-Router --> Pages["Pages<br/>Dashboard, Groups, Schedule, ..."]
-Pages --> Components["Shared Components<br/>FlagImage, SEO, ..."]
-Pages --> API["API Client<br/>client.js"]
-API --> Backend["Backend API<br/>/api/*"]
-Browser --> PWA["PWA Assets<br/>manifest.json, sw.js"]
-Browser --> Styles["Tailwind Styles<br/>tailwind.config.js"]
+UI["React Components<br/>Pages + Reusable UI"]
+STATE["Context Providers<br/>Theme + Language"]
+DATA["API Client<br/>Axios-based"]
+STYLE["Tailwind + Custom CSS"]
+INFRA["Vite Build + PWA"]
+UI --> STATE
+UI --> DATA
+UI --> STYLE
+DATA --> INFRA
+STYLE --> INFRA
 ```
 
-**Diagram sources**
-- [main.jsx:1-22](file://frontend/src/main.jsx#L1-L22)
-- [App.jsx:1-284](file://frontend/src/App.jsx#L1-L284)
-- [client.js:1-50](file://frontend/src/api/client.js#L1-L50)
-- [manifest.json:1-50](file://frontend/public/manifest.json#L1-L50)
-- [sw.js:1-32](file://frontend/public/sw.js#L1-L32)
-- [tailwind.config.js:1-161](file://frontend/tailwind.config.js#L1-L161)
+[No sources needed since this diagram shows conceptual architecture, not a direct code mapping]
 
 ## Detailed Component Analysis
 
-### Routing and Navigation
-- BrowserRouter wraps the app and defines routes for dashboard, schedule, groups, tournament, match/team detail, and legacy redirects.
-- Navigation bar adapts to desktop and mobile with active state styling and localized labels.
-- Navigation keys are centralized and localized via the language context.
+### Routing and Navigation Flow
+The routing system is defined in App.jsx with nested providers and responsive navigation. The flow below illustrates how the application initializes and navigates between pages.
 
 ```mermaid
 sequenceDiagram
-participant User as "User"
-participant Router as "React Router"
+participant Browser as "Browser"
+participant Main as "main.jsx"
+participant Provider as "Providers<br/>Helmet + Theme + Language"
+participant Router as "BrowserRouter"
 participant App as "App.jsx"
 participant Page as "Page Component"
-User->>Router : Click navigation link
-Router->>App : Render matching route
-App->>Page : Pass props and children
-Page-->>User : Render page content
+Browser->>Main : Load index.html
+Main->>Provider : Wrap app with providers
+Provider->>Router : Enable routing
+Router->>App : Render App with routes
+App->>Page : Navigate to requested route
+Page-->>Browser : Render page content
 ```
 
 **Diagram sources**
-- [App.jsx:262-275](file://frontend/src/App.jsx#L262-L275)
+- [main.jsx:1-22](file://frontend/src/main.jsx#L1-L22)
+- [App.jsx:1-284](file://frontend/src/App.jsx#L1-L284)
 
 **Section sources**
 - [App.jsx:1-284](file://frontend/src/App.jsx#L1-L284)
 
-### Theme Management
-- ThemeProvider reads persisted preference or OS preference, toggles class on document element, and persists changes.
-- Theme toggle button switches between light and dark modes.
+### State Management Patterns
+The application uses React Context for global state:
+- ThemeContext manages theme preference and applies dark mode class to the document element.
+- LanguageContext manages language preference, date formatting, and team name localization.
 
 ```mermaid
-flowchart TD
-Start(["Mount ThemeProvider"]) --> ReadSaved["Read 'wc26-theme' from localStorage"]
-ReadSaved --> HasSaved{"Saved theme exists?"}
-HasSaved --> |Yes| ApplySaved["Apply saved theme"]
-HasSaved --> |No| PrefersDark{"OS prefers dark?"}
-PrefersDark --> |Yes| SetDark["Set theme = 'dark'"]
-PrefersDark --> |No| SetLight["Set theme = 'light'"]
-ApplySaved --> Persist["Persist to localStorage"]
-SetDark --> Persist
-SetLight --> Persist
-Persist --> Toggle["toggleTheme() flips theme"]
-Toggle --> UpdateDOM["Update documentElement class 'dark'"]
-UpdateDOM --> Persist
+classDiagram
+class ThemeProvider {
++theme : string
++toggleTheme() : void
+}
+class LanguageProvider {
++lang : string
++toggleLang() : void
++useT(key) : string
++useFormatDate(date) : string
++useToSGT(date,time) : string
++useTeamName(teamId,fallback) : string
+}
+class App {
++renders navigation and routes
+}
+App --> ThemeProvider : "wraps"
+App --> LanguageProvider : "wraps"
 ```
 
 **Diagram sources**
-- [ThemeContext.jsx:5-15](file://frontend/src/contexts/ThemeContext.jsx#L5-L15)
+- [ThemeContext.jsx:1-27](file://frontend/src/contexts/ThemeContext.jsx#L1-L27)
+- [LanguageContext.jsx:1-69](file://frontend/src/contexts/LanguageContext.jsx#L1-L69)
+- [App.jsx:1-284](file://frontend/src/App.jsx#L1-L284)
 
 **Section sources**
 - [ThemeContext.jsx:1-27](file://frontend/src/contexts/ThemeContext.jsx#L1-L27)
-- [index.html:9-17](file://frontend/index.html#L9-L17)
-
-### Internationalization and Localization
-- LanguageProvider stores language selection in localStorage and exposes toggle.
-- useT resolves dot-notation keys against translations registry.
-- Locale-aware helpers for date formatting and team name lookup.
-- Translations include English and Chinese with team name overrides.
-
-```mermaid
-flowchart TD
-Init(["Mount LanguageProvider"]) --> LoadLang["Load 'wc26-lang' from localStorage or default 'en'"]
-LoadLang --> Persist["Persist to localStorage on change"]
-Persist --> Hooks["Expose useT, useFormatDate, useToSGT, useFormatDateShort, useTeamName"]
-Hooks --> Translate["useT(key) -> translations[lang][...parts]"]
-Hooks --> Dates["Locale-bound date helpers"]
-Hooks --> TeamName["useTeamName(teamId, fallback) -> zh override if lang='zh'"]
-```
-
-**Diagram sources**
-- [LanguageContext.jsx:7-69](file://frontend/src/contexts/LanguageContext.jsx#L7-L69)
-- [translations.js:1-630](file://frontend/src/i18n/translations.js#L1-L630)
-
-**Section sources**
 - [LanguageContext.jsx:1-69](file://frontend/src/contexts/LanguageContext.jsx#L1-L69)
-- [translations.js:1-630](file://frontend/src/i18n/translations.js#L1-L630)
 
-### API Client and Backend Synchronization
-- API client constructs base URL from environment variable or local proxy, sets timeouts, and exports typed endpoints.
-- Endpoints cover teams, matches, predictions, groups, tournament, analytics, suspensions, lineups, H2H, and agent sessions.
-- Some endpoints accept language and refresh flags.
+### Data Fetching Strategy
+The API client centralizes HTTP operations and exposes domain-specific functions. Pages orchestrate data fetching using React hooks and Promise-based patterns.
 
 ```mermaid
 sequenceDiagram
 participant Page as "Page Component"
-participant API as "client.js"
-participant Proxy as "Vite Dev Proxy"
-participant Backend as "Backend /api/*"
-Page->>API : getUpcomingMatches()
-API->>Proxy : GET /api/matches/today
-Proxy->>Backend : Forward request
-Backend-->>Proxy : JSON response
-Proxy-->>API : JSON response
+participant API as "api/client.js"
+participant Backend as "Backend API"
+Page->>API : Call getUpcomingMatches()
+API->>Backend : GET /api/matches/today
+Backend-->>API : JSON response
+API-->>Page : Parsed data
+Page->>API : Call getWinnerProbabilities()
+API->>Backend : GET /api/tournament/winner-probabilities
+Backend-->>API : JSON response
 API-->>Page : Parsed data
 ```
 
 **Diagram sources**
+- [Dashboard.jsx:147-158](file://frontend/src/pages/Dashboard.jsx#L147-L158)
+- [client.js:9-38](file://frontend/src/api/client.js#L9-L38)
+
+**Section sources**
+- [Dashboard.jsx:147-158](file://frontend/src/pages/Dashboard.jsx#L147-L158)
 - [client.js:1-50](file://frontend/src/api/client.js#L1-L50)
-- [vite.config.js:11-19](file://frontend/vite.config.js#L11-L19)
 
-**Section sources**
-- [client.js:1-50](file://frontend/src/api/client.js#L1-L50)
-- [vite.config.js:1-26](file://frontend/vite.config.js#L1-L26)
-
-### Styling Architecture and Custom Themes
-- Tailwind is configured with a custom Chinese landscape painting palette (cn, apple, wc, fifa) and gradients.
-- Typography scales, border radii, shadows, and backdrop filters are extended for a cohesive design system.
-- Color tokens align with imperial and Tang dynasty aesthetics.
-
-```mermaid
-classDiagram
-class TailwindConfig {
-+darkMode : "class"
-+content : "./index.html, ./src/**/*.{js,ts,jsx,tsx}"
-+theme.extend.fontFamily
-+theme.extend.colors.cn/apple/wc/fifa
-+theme.extend.backgroundImage.grad-*
-+theme.extend.borderRadius
-+theme.extend.boxShadow
-+theme.extend.fontSize
-}
-class ThemeTokens {
-+colors : cn, apple, wc, fifa
-+gradients : grad-landscape, grad-tang, grad-sunrise, ...
-+typography : display, h1, h2, eyebrow, caption
-+radii : 2xl..5xl, pill, seal
-+shadows : apple*, glow*, tang*
-}
-TailwindConfig --> ThemeTokens : "defines"
-```
-
-**Diagram sources**
-- [tailwind.config.js:5-161](file://frontend/tailwind.config.js#L5-L161)
-
-**Section sources**
-- [tailwind.config.js:1-161](file://frontend/tailwind.config.js#L1-L161)
-
-### Responsive Design Patterns
-- Mobile-first approach with breakpoints targeting tablet and desktop layouts.
-- Safe area insets handled for mobile browsers.
-- Navigation adapts from desktop header links to a bottom tab bar on small screens.
-
-```mermaid
-flowchart TD
-Viewport["Viewport"] --> Mobile["< md: MobileTopBar + BottomTabBar"]
-Viewport --> Desktop[">= md: DesktopNav"]
-Mobile --> SafeArea["Apply env(safe-area-inset-* )"]
-Desktop --> StickyHeader["Fixed header with backdrop blur"]
-```
-
-**Diagram sources**
-- [App.jsx:168-245](file://frontend/src/App.jsx#L168-L245)
-- [index.html:6-6](file://frontend/index.html#L6-L6)
-
-**Section sources**
-- [App.jsx:168-245](file://frontend/src/App.jsx#L168-L245)
-- [index.html:6-6](file://frontend/index.html#L6-L6)
-
-### Accessibility Considerations
-- Semantic markup and proper heading hierarchy in pages.
-- Focusable interactive elements styled for visibility.
-- Color contrast aligned with theme tokens for readability.
-- ARIA-friendly navigation and landmarks via semantic HTML and roles.
-
-[No sources needed since this section provides general guidance]
-
-### Component Composition Strategies
-- Shared components like FlagImage are reusable and accept size and lazy loading attributes.
-- Pages compose smaller components and shared utilities.
-- Chart-related colors are centralized for consistent visualization.
+### Component Library Composition
+Reusable components encapsulate presentation and partial logic, enabling composition across pages.
 
 ```mermaid
 graph TB
-Dashboard["Dashboard.jsx"] --> SEO["SEO.jsx"]
-Dashboard --> MatchCard["MatchCard.jsx"]
-Dashboard --> FlagImage["FlagImage.jsx"]
-Dashboard --> TangOrnaments["TangOrnaments.jsx"]
-FlagImage --> UtilsFlag["utils/flag.js"]
-Dashboard --> ChartColors["utils/chartColors.js"]
+DASH["Dashboard.jsx"]
+GROUPS["Groups.jsx"]
+MATCH["MatchCard.jsx"]
+TABLE["GroupTable.jsx"]
+BAR["PredictionBar.jsx"]
+DASH --> MATCH
+DASH --> TABLE
+GROUPS --> TABLE
+MATCH --> BAR
 ```
 
 **Diagram sources**
-- [Dashboard.jsx:1-200](file://frontend/src/pages/Dashboard.jsx#L1-L200)
-- [FlagImage.jsx:1-31](file://frontend/src/components/FlagImage.jsx#L1-L31)
-- [chartColors.js:1-11](file://frontend/src/utils/chartColors.js#L1-L11)
+- [Dashboard.jsx:1-706](file://frontend/src/pages/Dashboard.jsx#L1-L706)
+- [Groups.jsx:1-160](file://frontend/src/pages/Groups.jsx#L1-L160)
+- [MatchCard.jsx:1-175](file://frontend/src/components/MatchCard.jsx#L1-L175)
+- [GroupTable.jsx:1-78](file://frontend/src/components/GroupTable.jsx#L1-L78)
+- [PredictionBar.jsx:1-51](file://frontend/src/components/PredictionBar.jsx#L1-L51)
 
 **Section sources**
-- [Dashboard.jsx:1-200](file://frontend/src/pages/Dashboard.jsx#L1-L200)
-- [FlagImage.jsx:1-31](file://frontend/src/components/FlagImage.jsx#L1-L31)
-- [chartColors.js:1-11](file://frontend/src/utils/chartColors.js#L1-L11)
+- [MatchCard.jsx:1-175](file://frontend/src/components/MatchCard.jsx#L1-L175)
+- [GroupTable.jsx:1-78](file://frontend/src/components/GroupTable.jsx#L1-L78)
+- [PredictionBar.jsx:1-51](file://frontend/src/components/PredictionBar.jsx#L1-L51)
 
-### Build Pipeline and Asset Management
-- Vite dev server proxies /api to backend; targets modern browsers with transpilation.
-- Pre-rendering via react-snap during postbuild for improved SEO and performance.
-- PWA assets include manifest and service worker; sw.js implements a kill-switch to clean caches and unregister.
+### Internationalization System
+The i18n system supports English and Chinese with dynamic language switching and locale-aware formatting.
 
 ```mermaid
 flowchart TD
-Dev["Vite Dev Server"] --> Proxy["Proxy /api -> http://localhost:6173"]
-Build["Vite Build"] --> Dist["dist/"]
-PostBuild["postbuild script"] --> Snap["react-snap pre-render"]
-Snap --> Dist
-Dist --> PWA["manifest.json, icons, sw.js"]
-SW["sw.js"] --> Clean["Delete caches, unregister, reload windows"]
+Start(["Select Language"]) --> Save["Persist language in localStorage"]
+Save --> Apply["Apply language to context"]
+Apply --> Translate["useT(key) resolves translation"]
+Apply --> FormatDate["useFormatDate(date)"]
+Apply --> ToSGT["useToSGT(date,time)"]
+Apply --> TeamName["useTeamName(teamId,fallback)"]
+Translate --> Render["Render localized UI"]
+FormatDate --> Render
+ToSGT --> Render
+TeamName --> Render
 ```
 
 **Diagram sources**
-- [vite.config.js:11-25](file://frontend/vite.config.js#L11-L25)
-- [package.json:6-14](file://frontend/package.json#L6-L14)
-- [manifest.json:1-50](file://frontend/public/manifest.json#L1-L50)
-- [sw.js:1-32](file://frontend/public/sw.js#L1-L32)
+- [LanguageContext.jsx:1-69](file://frontend/src/contexts/LanguageContext.jsx#L1-L69)
+- [translations.js:1-630](file://frontend/src/i18n/translations.js#L1-L630)
 
 **Section sources**
-- [vite.config.js:1-26](file://frontend/vite.config.js#L1-L26)
-- [package.json:1-72](file://frontend/package.json#L1-L72)
-- [manifest.json:1-50](file://frontend/public/manifest.json#L1-L50)
-- [sw.js:1-32](file://frontend/public/sw.js#L1-L32)
+- [LanguageContext.jsx:1-69](file://frontend/src/contexts/LanguageContext.jsx#L1-L69)
+- [translations.js:1-630](file://frontend/src/i18n/translations.js#L1-L630)
 
-## Dependency Analysis
-- App depends on React Router for navigation and on context providers for global state.
-- Pages depend on the API client and context hooks for data and localization.
-- Components depend on shared utilities and styling tokens.
+### PWA and Offline Functionality
+The application includes a service worker and manifest for Progressive Web App capabilities.
 
 ```mermaid
-graph LR
-App["App.jsx"] --> Router["react-router-dom"]
-App --> Theme["ThemeContext.jsx"]
-App --> Lang["LanguageContext.jsx"]
-Dashboard["Dashboard.jsx"] --> API["client.js"]
-Dashboard --> Lang
-FlagImage["FlagImage.jsx"] --> UtilsFlag["utils/flag.js"]
-Chart["Dashboard.jsx"] --> Colors["utils/chartColors.js"]
+sequenceDiagram
+participant Browser as "Browser"
+participant SW as "service-worker.js"
+participant Cache as "Cache Storage"
+participant Manifest as "manifest.json"
+Browser->>SW : Register service worker
+SW->>Cache : Install and activate
+SW->>Cache : Delete old caches
+SW->>Browser : Unregister self
+Browser->>Manifest : Load app manifest
+Manifest-->>Browser : Icons, name, start_url
 ```
 
 **Diagram sources**
-- [App.jsx:1-11](file://frontend/src/App.jsx#L1-L11)
-- [Dashboard.jsx:1-11](file://frontend/src/pages/Dashboard.jsx#L1-L11)
-- [client.js:1-50](file://frontend/src/api/client.js#L1-L50)
-- [FlagImage.jsx:1-31](file://frontend/src/components/FlagImage.jsx#L1-L31)
-- [chartColors.js:1-11](file://frontend/src/utils/chartColors.js#L1-L11)
+- [sw.js:1-32](file://frontend/public/sw.js#L1-L32)
+- [manifest.json:1-50](file://frontend/public/manifest.json#L1-L50)
 
 **Section sources**
+- [sw.js:1-32](file://frontend/public/sw.js#L1-L32)
+- [manifest.json:1-50](file://frontend/public/manifest.json#L1-L50)
+
+## Dependency Analysis
+The frontend relies on a set of core libraries and build tooling.
+
+```mermaid
+graph TB
+REACT["react + react-dom"]
+ROUTER["react-router-dom"]
+AXIOS["axios"]
+HELMET["react-helmet-async"]
+FRAMER["framer-motion"]
+ICONS["lucide-react"]
+TAILWIND["tailwindcss"]
+VITE["vite"]
+TEST["vitest + jsdom"]
+APP["App.jsx"]
+MAIN["main.jsx"]
+API["api/client.js"]
+PAGES["pages/*"]
+CMPS["components/*"]
+CTX["contexts/*"]
+APP --> ROUTER
+APP --> CTX
+MAIN --> HELMET
+MAIN --> REACT
+PAGES --> API
+PAGES --> CMPS
+CMPS --> AXIOS
+CMPS --> ICONS
+CMPS --> FRAMER
+API --> AXIOS
+VITE --> TAILWIND
+TEST --> REACT
+```
+
+**Diagram sources**
+- [package.json:38-71](file://frontend/package.json#L38-L71)
+- [main.jsx:1-22](file://frontend/src/main.jsx#L1-L22)
 - [App.jsx:1-284](file://frontend/src/App.jsx#L1-L284)
-- [Dashboard.jsx:1-200](file://frontend/src/pages/Dashboard.jsx#L1-L200)
 - [client.js:1-50](file://frontend/src/api/client.js#L1-L50)
 
+**Section sources**
+- [package.json:1-72](file://frontend/package.json#L1-L72)
+
 ## Performance Considerations
-- Pre-rendering with react-snap improves initial load performance and SEO.
-- Lazy image loading in FlagImage reduces bandwidth and improves LCP.
-- Efficient Tailwind utilities minimize CSS bloat while enabling rapid iteration.
-- Framer Motion animations are scoped to enhance UX without heavy overhead.
-- Vite’s fast refresh and optimized bundling reduce dev iteration time.
+- Pre-rendering: react-snap generates static HTML for improved initial load performance and SEO.
+- Build targets: Vite targets modern browsers with transpilation for compatibility.
+- Lazy loading and code splitting: Recommended for large pages and heavy components.
+- Image optimization: Use appropriate image sizes and formats; leverage responsive attributes.
+- CSS optimization: Tailwind purging and custom utilities minimize bundle size.
+- API caching: Implement caching strategies for repeated queries and reduce network overhead.
+- Bundle analysis: Use Vite plugin for bundle visualization during development.
 
 [No sources needed since this section provides general guidance]
 
 ## Troubleshooting Guide
-- Theme not persisting: Verify localStorage key 'wc26-theme' and documentElement class updates.
-- Language not switching: Confirm 'wc26-lang' storage and useT resolution chain.
-- API requests failing: Check Vite proxy configuration and backend availability.
-- Service worker caching issues: Review sw.js kill-switch behavior and cache clearing.
-- Hydration mismatch: Ensure SSR hydration logic aligns with initial DOM and strict mode expectations.
+Common issues and resolutions:
+- Blank screen after navigation: Verify service worker activation and cache clearing behavior.
+- Theme not persisting: Check localStorage availability and dark mode class application.
+- Missing translations: Confirm language key exists in translations.js and useT resolves correctly.
+- API errors: Inspect base URL configuration and network connectivity; validate endpoint responses.
+- Hydration mismatch: Ensure server-side rendering and client hydration alignment.
 
 **Section sources**
+- [sw.js:17-31](file://frontend/public/sw.js#L17-L31)
 - [ThemeContext.jsx:5-15](file://frontend/src/contexts/ThemeContext.jsx#L5-L15)
 - [LanguageContext.jsx:7-14](file://frontend/src/contexts/LanguageContext.jsx#L7-L14)
-- [vite.config.js:11-19](file://frontend/vite.config.js#L11-L19)
-- [sw.js:17-31](file://frontend/public/sw.js#L17-L31)
-- [main.jsx:16-21](file://frontend/src/main.jsx#L16-L21)
+- [client.js:3-7](file://frontend/src/api/client.js#L3-L7)
 
 ## Conclusion
-The WC26-Qwen-Qoder frontend employs a clean, modular architecture leveraging React Router for navigation, context providers for global state, and a comprehensive Tailwind customization for a culturally inspired design system. The Vite build pipeline, combined with pre-rendering and PWA assets, delivers strong performance and user experience. Internationalization and theme management are centralized and extensible, while the API client abstracts backend interactions for maintainability.
-
-## Appendices
-
-### API Endpoint Reference
-- Teams: GET /api/teams, GET /api/teams/:id
-- Matches: GET /api/matches, GET /api/matches/today, GET /api/matches/upcoming, GET /api/matches/upset-watch, GET /api/matches/:id, POST /api/matches/:id/result
-- Predictions: GET /api/matches/:id/prediction?refresh&lang, GET /api/matches/:id/predictions, POST /api/predictions/generate-all
-- Groups: GET /api/groups, GET /api/groups/:g, GET /api/groups/:g/scenarios
-- Tournament: GET /api/tournament/bracket, GET /api/tournament/winner-probabilities, GET /api/tournament/road-to-final, POST /api/tournament/simulate-knockout
-- Analytics: GET /api/analytics/accuracy
-- Sync: POST /api/sync
-- Match Details: GET /api/matches/:id/suspensions, GET /api/matches/:id/lineup, GET /api/h2h/:a/:b, GET /api/matches/:id/agent-session
-
-**Section sources**
-- [client.js:9-50](file://frontend/src/api/client.js#L9-L50)
+The frontend architecture combines a clean component hierarchy, robust state management via React Context, a centralized API client, and a comprehensive styling system with Tailwind CSS. The routing structure, internationalization, and PWA features deliver a responsive, accessible, and performant user experience across devices and locales. Following the outlined patterns and best practices ensures maintainability and scalability as the application evolves.

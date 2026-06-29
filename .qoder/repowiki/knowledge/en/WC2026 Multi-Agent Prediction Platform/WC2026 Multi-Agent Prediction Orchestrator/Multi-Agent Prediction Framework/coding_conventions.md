@@ -1,3 +1,0 @@
-- Specialist agents export a consistent trio: a singleton `agent` instance, a `fetchDomainData` async function for parallel pre-fetching, and a `buildPrompt` function that returns null to signal the orchestrator to skip the agent.
-- All agents adhere to a strict JSON output schema defined in `AGENT_OUTPUT_SCHEMA`, requiring `probability`, `confidence`, `evidence`, and `weightRecommendation` fields, with robust extraction logic in `agentFramework.js` to handle markdown fences and common LLM formatting errors.
-- Conflict resolution follows a 'move-based' weighting strategy: agents that change their probabilities less during Round 2 negotiation are deemed 'winners' and receive a 1.3x weight boost, while those that concede more are penalized with a 0.6x weight reduction.

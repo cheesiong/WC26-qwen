@@ -1,1 +1,0 @@
-Docker Compose orchestrates the multi-service runtime; Alibaba Cloud ECS serves as the unified deployment target for both frontend and backend containers.

@@ -1,0 +1,3 @@
+- The root module defines the deployment boundary using `docker-compose.yml`, where the `frontend` service proxies API requests to the `backend` service via an internal Docker network.
+- Unified lifecycle management is provided by `start.sh`, which synchronizes dependency installation, database seeding, and parallel server booting for local development.
+- Production deployment is standardized through `deploy.sh` and `setup-ecs.sh`, which automate rsync-based code synchronization and container rebuilding on Alibaba Cloud ECS instances.

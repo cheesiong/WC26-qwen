@@ -1,3 +1,0 @@
-- Specialist agents export a singleton `agent` instance and a `buildPrompt(matchContext, domainData)` function.
-- Agents implement `fetchDomainData` to retrieve external signals, returning null on failure to allow graceful skipping.
-- All agent responses must strictly follow the `AGENT_OUTPUT_SCHEMA` JSON structure for probability, confidence, and evidence.

@@ -8,14 +8,13 @@
 - [PredictionBar.jsx](file://frontend/src/components/PredictionBar.jsx)
 - [SEO.jsx](file://frontend/src/components/SEO.jsx)
 - [TangOrnaments.jsx](file://frontend/src/components/TangOrnaments.jsx)
-- [index.css](file://frontend/src/index.css)
+- [flag.js](file://frontend/src/utils/flag.js)
 - [LanguageContext.jsx](file://frontend/src/contexts/LanguageContext.jsx)
 - [ThemeContext.jsx](file://frontend/src/contexts/ThemeContext.jsx)
-- [flag.js](file://frontend/src/utils/flag.js)
-- [time.js](file://frontend/src/utils/time.js)
-- [chartColors.js](file://frontend/src/utils/chartColors.js)
+- [PredictionBar.test.jsx](file://frontend/src/components/PredictionBar.test.jsx)
 - [App.jsx](file://frontend/src/App.jsx)
-- [translations.js](file://frontend/src/i18n/translations.js)
+- [Dashboard.jsx](file://frontend/src/pages/Dashboard.jsx)
+- [Groups.jsx](file://frontend/src/pages/Groups.jsx)
 </cite>
 
 ## Table of Contents
@@ -28,12 +27,21 @@
 7. [Performance Considerations](#performance-considerations)
 8. [Troubleshooting Guide](#troubleshooting-guide)
 9. [Conclusion](#conclusion)
+10. [Appendices](#appendices)
 
 ## Introduction
-This document describes the reusable UI components that compose the application’s front-end. It focuses on six components: FlagImage, GroupTable, MatchCard, PredictionBar, SEO, and TangOrnaments. For each component, we explain props, expected data formats, styling approaches, composition patterns, accessibility features, responsive behavior, and integration with parent components. We also outline how these components participate in the overall UI architecture and maintain design system consistency.
+This document describes the reusable UI components that provide consistent visual identity and functionality across the application. It focuses on:
+- FlagImage: country flag images with fallback handling
+- GroupTable: group standings with internationalization and decorative accents
+- MatchCard: fixture preview with prediction indicators and status chips
+- PredictionBar: probability distribution visualization
+- SEO: metadata and social sharing management
+- TangOrnaments: decorative Chinese landscape-inspired SVG elements
+
+It explains component props, styling approaches, accessibility features, composition patterns, prop validation, event handling, usage examples, customization options, theme integration, performance considerations, and optimization strategies.
 
 ## Project Structure
-The UI components live under frontend/src/components and integrate with shared utilities, contexts, and global styles. The design system is primarily defined via Tailwind utility classes and custom CSS variables in index.css, while language and theme contexts provide runtime behavior.
+The UI components are located under frontend/src/components and are composed by page-level components under frontend/src/pages. They integrate with shared contexts for language and theme, and rely on utility functions for flag URLs.
 
 ```mermaid
 graph TB
@@ -46,37 +54,37 @@ SEO["SEO.jsx"]
 TO["TangOrnaments.jsx"]
 end
 subgraph "Utilities"
-FL["flag.js"]
-TM["time.js"]
-CC["chartColors.js"]
+FU["flag.js"]
 end
 subgraph "Contexts"
 LC["LanguageContext.jsx"]
 TC["ThemeContext.jsx"]
 end
-subgraph "Styles"
-CSS["index.css"]
+subgraph "Pages"
+DASH["Dashboard.jsx"]
+GRPS["Groups.jsx"]
 end
-subgraph "App"
-APP["App.jsx"]
-end
-subgraph "Translations"
-TR["translations.js"]
-end
-FI --> FL
+FI --> FU
 GT --> FI
 GT --> TO
-MC --> PB
 MC --> FI
+MC --> PB
 MC --> TO
-MC --> LC
 PB --> LC
-SEO --> APP
-TO --> CSS
-LC --> TR
-APP --> LC
-APP --> TC
-CSS --> APP
+SEO --> DASH
+SEO --> GRPS
+DASH --> TO
+GRPS --> TO
+DASH --> FI
+GRPS --> FI
+DASH --> MC
+GRPS --> MC
+DASH --> SEO
+GRPS --> SEO
+DASH --> LC
+GRPS --> LC
+DASH --> TC
+GRPS --> TC
 ```
 
 **Diagram sources**
@@ -87,346 +95,440 @@ CSS --> APP
 - [SEO.jsx:1-50](file://frontend/src/components/SEO.jsx#L1-L50)
 - [TangOrnaments.jsx:1-230](file://frontend/src/components/TangOrnaments.jsx#L1-L230)
 - [flag.js:1-18](file://frontend/src/utils/flag.js#L1-L18)
-- [time.js:1-51](file://frontend/src/utils/time.js#L1-L51)
-- [chartColors.js:1-11](file://frontend/src/utils/chartColors.js#L1-L11)
 - [LanguageContext.jsx:1-69](file://frontend/src/contexts/LanguageContext.jsx#L1-L69)
 - [ThemeContext.jsx:1-27](file://frontend/src/contexts/ThemeContext.jsx#L1-L27)
-- [index.css:1-785](file://frontend/src/index.css#L1-L785)
-- [App.jsx:1-284](file://frontend/src/App.jsx#L1-L284)
-- [translations.js:1-630](file://frontend/src/i18n/translations.js#L1-L630)
+- [Dashboard.jsx:1-706](file://frontend/src/pages/Dashboard.jsx#L1-L706)
+- [Groups.jsx:1-160](file://frontend/src/pages/Groups.jsx#L1-L160)
 
 **Section sources**
-- [App.jsx:247-283](file://frontend/src/App.jsx#L247-L283)
-- [index.css:114-386](file://frontend/src/index.css#L114-L386)
+- [App.jsx:1-284](file://frontend/src/App.jsx#L1-L284)
+- [Dashboard.jsx:1-706](file://frontend/src/pages/Dashboard.jsx#L1-L706)
+- [Groups.jsx:1-160](file://frontend/src/pages/Groups.jsx#L1-L160)
 
 ## Core Components
-This section summarizes each component’s purpose, props, and integration points.
-
-- FlagImage: Renders a lazy-loaded national team flag image with responsive sizing and fallback handling.
-- GroupTable: Displays a tournament group standings table with flags, team names, and ranking indicators.
-- MatchCard: Presents a single match with teams, scores, prediction percentages, and optional prediction bar.
-- PredictionBar: Visualizes three-way prediction probabilities with labels and gradients.
-- SEO: Injects meta tags and JSON-LD for search engine optimization and social sharing.
-- TangOrnaments: Provides decorative SVG elements (watermarks, lanterns, pine branches) styled with the design system.
+- FlagImage: renders a lazy-loaded flag image with aspect ratio, rounded corners, shadow, and fallback handling when the URL is unavailable.
+- GroupTable: displays group standings with localized headers, team links, and decorative accents.
+- MatchCard: presents a fixture preview with status chips, confidence labels, team flags, scores, predicted outcomes, and a PredictionBar.
+- PredictionBar: visualizes home/draw/away probabilities with gradient segments and labels.
+- SEO: manages meta tags, Open Graph, Twitter Card, canonical URL, and JSON-LD for search engines and social sharing.
+- TangOrnaments: decorative SVG components (watermarks, lanterns, pine marks, bat clusters) with shared gradients and configurable opacity/size.
 
 **Section sources**
-- [FlagImage.jsx:16-30](file://frontend/src/components/FlagImage.jsx#L16-L30)
-- [GroupTable.jsx:7-77](file://frontend/src/components/GroupTable.jsx#L7-L77)
-- [MatchCard.jsx:21-174](file://frontend/src/components/MatchCard.jsx#L21-L174)
-- [PredictionBar.jsx:3-50](file://frontend/src/components/PredictionBar.jsx#L3-L50)
-- [SEO.jsx:18-49](file://frontend/src/components/SEO.jsx#L18-L49)
-- [TangOrnaments.jsx:37-229](file://frontend/src/components/TangOrnaments.jsx#L37-L229)
+- [FlagImage.jsx:1-31](file://frontend/src/components/FlagImage.jsx#L1-L31)
+- [GroupTable.jsx:1-78](file://frontend/src/components/GroupTable.jsx#L1-L78)
+- [MatchCard.jsx:1-175](file://frontend/src/components/MatchCard.jsx#L1-L175)
+- [PredictionBar.jsx:1-51](file://frontend/src/components/PredictionBar.jsx#L1-L51)
+- [SEO.jsx:1-50](file://frontend/src/components/SEO.jsx#L1-L50)
+- [TangOrnaments.jsx:1-230](file://frontend/src/components/TangOrnaments.jsx#L1-L230)
 
 ## Architecture Overview
-The components are organized around a cohesive design system:
-- Design tokens and component classes are defined in index.css, enabling consistent spacing, typography, colors, and card styles.
-- Language and theme contexts provide runtime localization and appearance switching.
-- Utility modules encapsulate domain logic (flags, dates, colors).
-- Parent components compose child components to build pages and views.
+The components are composed within page layouts that provide language and theme contexts. Decorative ornaments are embedded directly into pages and components to maintain consistent visual branding. SEO is injected at the page level to ensure proper metadata for each route.
 
 ```mermaid
-graph TB
-LC["LanguageContext.jsx<br/>useT/useFormatDate/useToSGT/useTeamName"]
-TC["ThemeContext.jsx<br/>theme/toggleTheme"]
-CSS["index.css<br/>design tokens + component classes"]
-subgraph "Pages"
-D["Dashboard"]
-G["Groups"]
-S["Schedule"]
-M["MatchDetail"]
-T["Tournament"]
-P["Predictions"]
-end
-subgraph "Reusable Components"
-MC["MatchCard"]
-GT["GroupTable"]
-PB["PredictionBar"]
-FI["FlagImage"]
-SEO["SEO"]
-TO["TangOrnaments"]
-end
-D --> GT
-G --> GT
-S --> MC
-M --> MC
-M --> PB
-MC --> FI
-MC --> TO
-GT --> FI
-GT --> TO
-SEO --> D
-SEO --> G
-SEO --> S
-SEO --> M
-SEO --> T
-SEO --> P
+sequenceDiagram
+participant Page as "Page Component"
+participant Ctx as "LanguageContext"
+participant Theme as "ThemeContext"
+participant Comp as "UI Component"
+participant Util as "Utility"
+participant SEO as "SEO"
+Page->>Ctx : consume hooks (useT, useFormatDate, useTeamName)
+Page->>Theme : consume theme (useTheme)
+Page->>Comp : render components (MatchCard, GroupTable, FlagImage)
+Comp->>Util : resolve flag URL (getFlagUrl)
+Page->>SEO : inject metadata (SEO)
+SEO-->>Page : Helmet meta tags
 ```
 
 **Diagram sources**
-- [LanguageContext.jsx:28-68](file://frontend/src/contexts/LanguageContext.jsx#L28-L68)
-- [ThemeContext.jsx:5-26](file://frontend/src/contexts/ThemeContext.jsx#L5-L26)
-- [index.css:114-386](file://frontend/src/index.css#L114-L386)
-- [MatchCard.jsx:1-175](file://frontend/src/components/MatchCard.jsx#L1-L175)
-- [GroupTable.jsx:1-78](file://frontend/src/components/GroupTable.jsx#L1-L78)
-- [PredictionBar.jsx:1-51](file://frontend/src/components/PredictionBar.jsx#L1-L51)
+- [LanguageContext.jsx:1-69](file://frontend/src/contexts/LanguageContext.jsx#L1-L69)
+- [ThemeContext.jsx:1-27](file://frontend/src/contexts/ThemeContext.jsx#L1-L27)
 - [FlagImage.jsx:1-31](file://frontend/src/components/FlagImage.jsx#L1-L31)
+- [flag.js:1-18](file://frontend/src/utils/flag.js#L1-L18)
 - [SEO.jsx:1-50](file://frontend/src/components/SEO.jsx#L1-L50)
-- [TangOrnaments.jsx:1-230](file://frontend/src/components/TangOrnaments.jsx#L1-L230)
+- [Dashboard.jsx:1-706](file://frontend/src/pages/Dashboard.jsx#L1-L706)
+- [Groups.jsx:1-160](file://frontend/src/pages/Groups.jsx#L1-L160)
 
 ## Detailed Component Analysis
 
 ### FlagImage
-Purpose:
-- Render a lazy-loaded national team flag image with responsive sizing and graceful fallback.
-
-Props:
-- teamId: string (required) — 3-letter team code mapped to ISO alpha-2 country code.
-- className: string (optional) — Additional Tailwind classes to customize layout.
-- alt: string (optional) — Alt text; defaults to teamId if omitted.
-- size: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | 'hero' (optional) — Controls width classes and pixel dimension.
-
-Expected data formats:
-- teamId must be present in the ISO mapping; otherwise the component returns null.
-- Image URL constructed from flagcdn.com using the computed ISO code and pixel width.
-
-Styling and responsiveness:
-- Uses aspect ratio and rounded corners for consistent visuals.
-- Applies ring and shadow for depth.
-- Size mapping defines Tailwind width classes and pixel dimensions.
-
-Accessibility:
-- Provides alt text for screen readers.
-- Lazy loading reduces initial payload.
-
-Integration:
-- Used within MatchCard and GroupTable to display team flags.
-
-Usage example (paths):
-- [MatchCard.jsx](file://frontend/src/components/MatchCard.jsx#L84)
-- [GroupTable.jsx](file://frontend/src/components/GroupTable.jsx#L45)
-
-**Section sources**
-- [FlagImage.jsx:16-30](file://frontend/src/components/FlagImage.jsx#L16-L30)
-- [flag.js:13-17](file://frontend/src/utils/flag.js#L13-L17)
-
-### GroupTable
-Purpose:
-- Display a tournament group standings table with flags, team names, and ranking indicators.
-
-Props:
-- group: string (required) — Group identifier (e.g., "A").
-- teams: array (required) — Team entries with gs_* fields for stats.
-
-Expected data formats:
-- Each team object includes id, name, and statistics fields (gs_played, gs_won, gs_drawn, gs_lost, gs_gf, gs_ga, gs_pts).
-
-Composition:
-- Uses FlagImage for flags.
-- Uses TangOrnaments (BatCluster) as decorative watermark.
-- Uses LanguageContext for localized headers and labels.
-
-Responsive behavior:
-- Horizontal scrolling enabled for small screens.
-- Table widths adapt to content and viewport.
-
-Accessibility:
-- Semantic table markup with headers.
-- Hover and focus states for interactive rows.
-
-Usage example (paths):
-- [GroupTable.jsx:7-77](file://frontend/src/components/GroupTable.jsx#L7-L77)
-
-**Section sources**
-- [GroupTable.jsx:7-77](file://frontend/src/components/GroupTable.jsx#L7-L77)
-- [TangOrnaments.jsx:180-219](file://frontend/src/components/TangOrnaments.jsx#L180-L219)
-- [LanguageContext.jsx:28-68](file://frontend/src/contexts/LanguageContext.jsx#L28-L68)
-
-### MatchCard
-Purpose:
-- Present a single match with teams, scores, prediction percentages, and optional prediction bar.
-
-Props:
-- match: object (required) — Contains match metadata and predictions.
-- showPrediction: boolean (default true) — Whether to render PredictionBar.
-
-Expected data formats:
-- match includes status, scheduled_date/time, group_code/stage, home_team/away_team, home_name/away_name, prob_home/draw/away, most_likely_score, insight, and confidence.
-
-Composition:
-- Uses FlagImage for team flags.
-- Uses PredictionBar for probability visualization.
-- Uses TangOrnaments (QilinMark) as decorative watermark.
-- Uses LanguageContext for localized labels and date/time formatting.
-
-Behavior:
-- Calculates outcome leads based on predicted probabilities or actual score.
-- Conditional rendering for completed vs. upcoming matches.
-- Click navigation to team detail pages.
-
-Accessibility:
-- Proper heading order and link semantics.
-- Hover and focus states for interactive elements.
-
-Usage example (paths):
-- [MatchCard.jsx:21-174](file://frontend/src/components/MatchCard.jsx#L21-L174)
-
-**Section sources**
-- [MatchCard.jsx:21-174](file://frontend/src/components/MatchCard.jsx#L21-L174)
-- [PredictionBar.jsx:3-50](file://frontend/src/components/PredictionBar.jsx#L3-L50)
-- [TangOrnaments.jsx:144-177](file://frontend/src/components/TangOrnaments.jsx#L144-L177)
-- [LanguageContext.jsx:28-68](file://frontend/src/contexts/LanguageContext.jsx#L28-L68)
-
-### PredictionBar
-Purpose:
-- Visualize three-way prediction probabilities (home, draw, away) with gradient segments and labels.
-
-Props:
-- probHome: number (0..1) — Home win probability.
-- probDraw: number (0..1) — Draw probability.
-- probAway: number (0..1) — Away win probability.
-- homeName: string — Home team name.
-- awayName: string — Away team name.
-- size: 'md' | 'lg' (default 'md') — Bar thickness and label size.
-- isKnockout: boolean (default false) — Changes middle label to “Extra Time / Pens”.
-
-Expected data formats:
-- Probabilities should sum approximately to 1.
-
-Styling:
-- Gradient segments for terracotta and amber palettes.
-- Center label positioned by weighted percentage.
-- Responsive sizing via size prop.
-
-Accessibility:
-- Labels include both team names and numeric percentages for screen readers.
-
-Usage example (paths):
-- [MatchCard.jsx:156-164](file://frontend/src/components/MatchCard.jsx#L156-L164)
-
-**Section sources**
-- [PredictionBar.jsx:3-50](file://frontend/src/components/PredictionBar.jsx#L3-L50)
-
-### SEO
-Purpose:
-- Inject canonical URL, Open Graph, Twitter, and JSON-LD metadata for SEO and social sharing.
-
-Props:
-- title: string (optional) — Page title.
-- description: string (optional) — Page description.
-- path: string (default '') — Relative path appended to site URL.
-- image: string (optional) — OG image URL.
-- jsonLd: object|array (optional) — Additional JSON-LD objects.
-
-Environment:
-- Uses VITE_SITE_URL and VITE_GSC_VERIFICATION from environment variables.
-
-Usage example (paths):
-- [SEO.jsx:18-49](file://frontend/src/components/SEO.jsx#L18-L49)
-
-**Section sources**
-- [SEO.jsx:18-49](file://frontend/src/components/SEO.jsx#L18-L49)
-
-### TangOrnaments
-Purpose:
-- Provide decorative SVG elements inspired by Chinese landscape painting motifs.
-
-Exports:
-- DragonWatermark, PhoenixWatermark, QilinMark, BatCluster, DragonPhoenixPair.
-
-Props (shared pattern):
-- className: string (optional) — Additional Tailwind classes.
-- opacity: number (default 0.28/0.24/0.22) — Opacity level.
-- size: number (default 280/260/48/64) — Width/height in pixels.
-
-Styling:
-- Uses gradient defs scoped to component id to avoid collisions.
-- Positioned absolutely with pointer-events disabled for non-interactive overlays.
-
-Usage example (paths):
-- [GroupTable.jsx](file://frontend/src/components/GroupTable.jsx#L12)
-- [MatchCard.jsx](file://frontend/src/components/MatchCard.jsx#L50)
-
-**Section sources**
-- [TangOrnaments.jsx:37-229](file://frontend/src/components/TangOrnaments.jsx#L37-L229)
-
-## Dependency Analysis
-This section maps how components depend on utilities, contexts, and styles.
+- Purpose: Render a country flag image with consistent sizing, aspect ratio, and fallback behavior.
+- Props:
+  - teamId: string, required. Used to map to ISO alpha-2 code.
+  - className: string, optional. Additional Tailwind classes.
+  - alt: string, optional. Image alt text; defaults to teamId if not provided.
+  - size: string, optional. Predefined size keys: xs, sm, md, lg, xl, hero.
+- Behavior:
+  - Resolves URL via getFlagUrl(teamId, px) where px is mapped from size.
+  - Returns null if URL cannot be resolved.
+  - Uses lazy loading and an error handler to hide broken images.
+- Styling:
+  - Aspect ratio constrained to 3:2.
+  - Rounded corners, soft shadow, and subtle ring.
+  - Size classes vary by size key; responsive sizes for xl/hero.
+- Accessibility:
+  - Provides alt text; falls back to teamId.
+  - Lazy loading reduces bandwidth and improves performance.
+- Integration:
+  - Consumed by MatchCard and GroupTable for team avatars.
+- Usage examples:
+  - Small host country flags in dashboard hero.
+  - Medium team badges in leader cards.
+  - Standard team flags in group tables and match cards.
 
 ```mermaid
-graph LR
-FI["FlagImage.jsx"] --> FL["flag.js"]
-GT["GroupTable.jsx"] --> FI
-GT --> TO["TangOrnaments.jsx"]
-MC["MatchCard.jsx"] --> PB["PredictionBar.jsx"]
-MC --> FI
-MC --> TO
-MC --> LC["LanguageContext.jsx"]
-PB --> LC
-SEO["SEO.jsx"] --> APP["App.jsx"]
-TO --> CSS["index.css"]
-LC --> TR["translations.js"]
-APP --> LC
-APP --> TC["ThemeContext.jsx"]
-CSS --> APP
+flowchart TD
+Start(["Render FlagImage"]) --> GetSize["Resolve px from size"]
+GetSize --> BuildURL["Build flag URL via getFlagUrl(teamId, px)"]
+BuildURL --> HasURL{"URL exists?"}
+HasURL --> |No| ReturnNull["Return null"]
+HasURL --> |Yes| ApplyClasses["Apply size classes + custom className"]
+ApplyClasses --> RenderImg["Render img with lazy loading and error handler"]
+RenderImg --> End(["Done"])
+ReturnNull --> End
 ```
 
 **Diagram sources**
 - [FlagImage.jsx:1-31](file://frontend/src/components/FlagImage.jsx#L1-L31)
+- [flag.js:1-18](file://frontend/src/utils/flag.js#L1-L18)
+
+**Section sources**
+- [FlagImage.jsx:1-31](file://frontend/src/components/FlagImage.jsx#L1-L31)
+- [flag.js:1-18](file://frontend/src/utils/flag.js#L1-L18)
+- [Dashboard.jsx:246-250](file://frontend/src/pages/Dashboard.jsx#L246-L250)
+- [Groups.jsx:142-144](file://frontend/src/pages/Groups.jsx#L142-L144)
+
+### GroupTable
+- Purpose: Display group standings with localized headers, team links, and decorative accents.
+- Props:
+  - group: string, required. Group letter identifier.
+  - teams: array of team objects, required. Each team includes id, name, and stats.
+- Behavior:
+  - Renders a table with localized column headers.
+  - Highlights top two teams with gold accents and badges.
+  - Links to team detail pages.
+  - Uses FlagImage for team flags.
+  - Integrates decorative BatCluster watermark.
+- Styling:
+  - Tang-themed card container with gradient header.
+  - Hover effects and borders for rows.
+  - Gold accents for top two positions.
+- Internationalization:
+  - Uses useT and useTeamName for localized headers and team names.
+- Accessibility:
+  - Semantic table structure with headers.
+  - Interactive links with keyboard focus styles.
+- Usage examples:
+  - Active group table in Groups page.
+  - Mini overview cards linking to full tables.
+
+```mermaid
+sequenceDiagram
+participant Page as "Groups Page"
+participant GT as "GroupTable"
+participant LC as "LanguageContext"
+participant FI as "FlagImage"
+participant TO as "TangOrnaments"
+Page->>GT : pass {group, teams}
+GT->>LC : useT() for headers
+GT->>LC : useTeamName() for team names
+GT->>FI : render FlagImage for each team
+GT->>TO : render BatCluster watermark
+GT-->>Page : rendered table card
+```
+
+**Diagram sources**
 - [GroupTable.jsx:1-78](file://frontend/src/components/GroupTable.jsx#L1-L78)
+- [LanguageContext.jsx:1-69](file://frontend/src/contexts/LanguageContext.jsx#L1-L69)
+- [TangOrnaments.jsx:180-219](file://frontend/src/components/TangOrnaments.jsx#L180-L219)
+
+**Section sources**
+- [GroupTable.jsx:1-78](file://frontend/src/components/GroupTable.jsx#L1-L78)
+- [Groups.jsx:99-111](file://frontend/src/pages/Groups.jsx#L99-L111)
+
+### MatchCard
+- Purpose: Present a fixture preview with status, confidence, team flags, scores, and prediction visualization.
+- Props:
+  - match: object, required. Fixture data including status, scheduled date/time, scores, probabilities, and metadata.
+  - showPrediction: boolean, optional, default true. Controls whether PredictionBar is shown.
+- Behavior:
+  - Status chip and confidence chip derived from match data.
+  - Renders most likely score and actual score depending on completion.
+  - Calculates lead indicators for home/away based on prediction or outcome.
+  - Clickable team names navigate to team detail pages.
+  - Integrates decorative QilinMark watermark.
+- Styling:
+  - Tang-themed card with hover elevation and gradient accents.
+  - Rainbow top accent and decorative watermark.
+  - Responsive typography and spacing.
+- Internationalization:
+  - Uses useT, useFormatDate, useToSGT, useTeamName for localized labels and dates.
+- Accessibility:
+  - Semantic link structure; interactive elements styled for focus.
+- Composition:
+  - Uses FlagImage for team flags.
+  - Uses PredictionBar for probability visualization.
+  - Uses TangOrnaments for decorative accents.
+
+```mermaid
+sequenceDiagram
+participant Page as "Dashboard/Groups Page"
+participant MC as "MatchCard"
+participant LC as "LanguageContext"
+participant FI as "FlagImage"
+participant PB as "PredictionBar"
+participant TO as "TangOrnaments"
+Page->>MC : pass {match, showPrediction}
+MC->>LC : useT/useFormatDate/useToSGT/useTeamName
+MC->>FI : render team flags
+MC->>PB : render PredictionBar if enabled and not completed
+MC->>TO : render QilinMark watermark
+MC-->>Page : rendered fixture card
+```
+
+**Diagram sources**
+- [MatchCard.jsx:1-175](file://frontend/src/components/MatchCard.jsx#L1-L175)
+- [LanguageContext.jsx:1-69](file://frontend/src/contexts/LanguageContext.jsx#L1-L69)
+- [PredictionBar.jsx:1-51](file://frontend/src/components/PredictionBar.jsx#L1-L51)
+- [TangOrnaments.jsx:144-177](file://frontend/src/components/TangOrnaments.jsx#L144-L177)
+
+**Section sources**
+- [MatchCard.jsx:1-175](file://frontend/src/components/MatchCard.jsx#L1-L175)
+- [Dashboard.jsx:497-498](file://frontend/src/pages/Dashboard.jsx#L497-L498)
+- [Groups.jsx:109-110](file://frontend/src/pages/Groups.jsx#L109-L110)
+
+### PredictionBar
+- Purpose: Visualize home/draw/away probabilities as a segmented horizontal bar with labels.
+- Props:
+  - probHome: number, required. Home win probability (0–1).
+  - probDraw: number, required. Draw probability (0–1).
+  - probAway: number, required. Away win probability (0–1).
+  - homeName: string, required. Home team name.
+  - awayName: string, required. Away team name.
+  - size: string, optional. 'md' or 'lg'. Controls bar thickness and label size.
+  - isKnockout: boolean, optional. Changes draw label to “Extra Time” for knockout stages.
+- Behavior:
+  - Computes percentage widths from input probabilities.
+  - Renders three gradient segments: home, draw, away.
+  - Centers draw label between home and away bars.
+- Styling:
+  - Rounded segment edges with gap-based spacing.
+  - Gradient color scheme aligned with team identities.
+- Internationalization:
+  - Uses useT for localized labels (draw vs extra time).
+- Accessibility:
+  - Clear labels with sufficient contrast and readable sizes.
+- Testing:
+  - Verified rendering of names, percentages, and large size variant.
+
+```mermaid
+flowchart TD
+Start(["Render PredictionBar"]) --> ValidateProps["Validate numeric probabilities"]
+ValidateProps --> ComputePct["Compute percentage widths"]
+ComputePct --> RenderSegments["Render gradient segments"]
+RenderSegments --> CenterLabel["Center draw label between segments"]
+CenterLabel --> End(["Done"])
+```
+
+**Diagram sources**
+- [PredictionBar.jsx:1-51](file://frontend/src/components/PredictionBar.jsx#L1-L51)
+- [LanguageContext.jsx:1-69](file://frontend/src/contexts/LanguageContext.jsx#L1-L69)
+
+**Section sources**
+- [PredictionBar.jsx:1-51](file://frontend/src/components/PredictionBar.jsx#L1-L51)
+- [PredictionBar.test.jsx:1-32](file://frontend/src/components/PredictionBar.test.jsx#L1-L32)
+
+### SEO
+- Purpose: Manage page metadata for SEO and social sharing, including canonical URL, Open Graph, Twitter Card, and JSON-LD.
+- Props:
+  - title: string, optional. Overrides default site title.
+  - description: string, optional. Overrides default description.
+  - path: string, optional. Path appended to base site URL for canonical and OG URL.
+  - image: string, optional. OG image URL; defaults to og-image.png.
+  - jsonLd: object or array, optional. Additional structured data entries.
+- Behavior:
+  - Constructs full URL from base site URL and path.
+  - Generates website schema and merges with provided jsonLd.
+  - Emits Helmet tags for title, description, canonical, OG, Twitter, and ld+json.
+- Environment:
+  - Reads site URL and Google Search Console verification token from environment variables.
+- Usage examples:
+  - Injected in Dashboard and Groups pages with page-specific titles and descriptions.
+
+```mermaid
+sequenceDiagram
+participant Page as "Page Component"
+participant SEO as "SEO"
+participant Env as "Environment"
+participant Helmet as "Helmet"
+Page->>SEO : pass {title, description, path, image, jsonLd}
+SEO->>Env : read VITE_SITE_URL, VITE_GSC_VERIFICATION
+SEO->>SEO : build full URL and image URL
+SEO->>SEO : construct website schema and merge jsonLd
+SEO->>Helmet : emit meta tags and ld+json
+Helmet-->>Page : rendered metadata
+```
+
+**Diagram sources**
+- [SEO.jsx:1-50](file://frontend/src/components/SEO.jsx#L1-L50)
+
+**Section sources**
+- [SEO.jsx:1-50](file://frontend/src/components/SEO.jsx#L1-L50)
+- [Dashboard.jsx:167-183](file://frontend/src/pages/Dashboard.jsx#L167-L183)
+- [Groups.jsx:43-47](file://frontend/src/pages/Groups.jsx#L43-L47)
+
+### TangOrnaments
+- Purpose: Provide decorative Chinese landscape-inspired SVG elements for visual branding.
+- Components:
+  - DragonWatermark: layered mountain silhouettes with mist and water elements.
+  - PhoenixWatermark: traditional junk boat with sails and ripples.
+  - QilinMark: pine branch accent for card corners.
+  - BatCluster: three lanterns with strings and tassels.
+  - DragonPhoenixPair: combined DragonWatermark and PhoenixWatermark.
+- Props:
+  - className: string, optional. Additional positioning classes.
+  - opacity: number, optional. Opacity value.
+  - size: number, optional. Width/height dimension.
+- Behavior:
+  - Uses shared linear gradients (amber, terracotta, sunrise, pine, sky) defined once per component.
+  - Absolute positioning with pointer-events disabled to avoid interfering with interactions.
+- Styling:
+  - Consistent color palette and stroke weights across components.
+  - Configurable opacity and size for responsive integration.
+
+```mermaid
+classDiagram
+class TangOrnaments {
++DragonWatermark(props)
++PhoenixWatermark(props)
++QilinMark(props)
++BatCluster(props)
++DragonPhoenixPair(props)
+}
+class LandscapeDefs {
++defs with gradients
+}
+TangOrnaments --> LandscapeDefs : "uses"
+```
+
+**Diagram sources**
+- [TangOrnaments.jsx:1-230](file://frontend/src/components/TangOrnaments.jsx#L1-L230)
+
+**Section sources**
+- [TangOrnaments.jsx:1-230](file://frontend/src/components/TangOrnaments.jsx#L1-L230)
+- [Dashboard.jsx:193-193](file://frontend/src/pages/Dashboard.jsx#L193-L193)
+- [Groups.jsx:58-58](file://frontend/src/pages/Groups.jsx#L58-L58)
+
+## Dependency Analysis
+- FlagImage depends on flag.js for URL resolution and is consumed by MatchCard and GroupTable.
+- MatchCard composes FlagImage, PredictionBar, and TangOrnaments; it also consumes LanguageContext for localization.
+- GroupTable composes FlagImage and TangOrnaments and consumes LanguageContext for headers and team names.
+- PredictionBar consumes LanguageContext for localized labels.
+- SEO is used at the page level to inject metadata.
+- All components integrate with ThemeContext indirectly via global theme classes applied by the app shell.
+
+```mermaid
+graph LR
+FI["FlagImage.jsx"] --> FU["flag.js"]
+MC["MatchCard.jsx"] --> FI
+MC --> PB["PredictionBar.jsx"]
+MC --> TO["TangOrnaments.jsx"]
+GT["GroupTable.jsx"] --> FI
+GT --> TO
+PB --> LC["LanguageContext.jsx"]
+MC --> LC
+GT --> LC
+SEO["SEO.jsx"] --> DASH["Dashboard.jsx"]
+SEO --> GRPS["Groups.jsx"]
+```
+
+**Diagram sources**
+- [FlagImage.jsx:1-31](file://frontend/src/components/FlagImage.jsx#L1-L31)
+- [flag.js:1-18](file://frontend/src/utils/flag.js#L1-L18)
 - [MatchCard.jsx:1-175](file://frontend/src/components/MatchCard.jsx#L1-L175)
 - [PredictionBar.jsx:1-51](file://frontend/src/components/PredictionBar.jsx#L1-L51)
-- [SEO.jsx:1-50](file://frontend/src/components/SEO.jsx#L1-L50)
+- [GroupTable.jsx:1-78](file://frontend/src/components/GroupTable.jsx#L1-L78)
 - [TangOrnaments.jsx:1-230](file://frontend/src/components/TangOrnaments.jsx#L1-L230)
-- [flag.js:1-18](file://frontend/src/utils/flag.js#L1-L18)
+- [LanguageContext.jsx:1-69](file://frontend/src/contexts/LanguageContext.jsx#L1-L69)
+- [SEO.jsx:1-50](file://frontend/src/components/SEO.jsx#L1-L50)
+- [Dashboard.jsx:1-706](file://frontend/src/pages/Dashboard.jsx#L1-L706)
+- [Groups.jsx:1-160](file://frontend/src/pages/Groups.jsx#L1-L160)
+
+**Section sources**
+- [App.jsx:1-284](file://frontend/src/App.jsx#L1-L284)
 - [LanguageContext.jsx:1-69](file://frontend/src/contexts/LanguageContext.jsx#L1-L69)
 - [ThemeContext.jsx:1-27](file://frontend/src/contexts/ThemeContext.jsx#L1-L27)
-- [index.css:1-785](file://frontend/src/index.css#L1-L785)
-- [App.jsx:1-284](file://frontend/src/App.jsx#L1-L284)
-- [translations.js:1-630](file://frontend/src/i18n/translations.js#L1-L630)
-
-**Section sources**
-- [index.css:114-386](file://frontend/src/index.css#L114-L386)
-- [LanguageContext.jsx:28-68](file://frontend/src/contexts/LanguageContext.jsx#L28-L68)
-- [ThemeContext.jsx:5-26](file://frontend/src/contexts/ThemeContext.jsx#L5-L26)
 
 ## Performance Considerations
-- Lazy loading images: FlagImage uses native lazy loading to defer offscreen flag images.
-- Minimal reflows: PredictionBar computes widths via percentages; gradients are static.
-- CSS utilities: Tailwind classes minimize inline styles and reduce DOM thrashing.
-- Decorative SVGs: TangOrnaments are rendered once per page and use opacity for subtlety.
-- Context memoization: useT/useFormatDate/useToSGT are derived from language state; keep renders minimal by avoiding unnecessary recomputation.
+- Lazy loading: FlagImage uses lazy loading to defer image fetching until near viewport, reducing initial payload.
+- Error handling: FlagImage hides broken images on error to prevent layout shifts and improve perceived performance.
+- Minimal re-renders: Components are stateless and rely on props; keep data normalized and memoized at higher levels.
+- Conditional rendering: PredictionBar is only rendered when predictions are available and the match is not completed.
+- CSS-in-JS gradients: TangOrnaments define gradients once and reuse them; avoid duplicating gradient definitions elsewhere.
+- Memoization patterns: For frequently used components, consider React.memo or useMemo around expensive computations (e.g., team name translation) in parent components.
+- Rendering optimization: Use virtualization for long lists of MatchCards or GroupTable rows if data scales significantly.
+
+[No sources needed since this section provides general guidance]
 
 ## Troubleshooting Guide
-Common issues and resolutions:
-- Missing flag image:
-  - Cause: teamId not present in ISO mapping.
-  - Resolution: Verify teamId against known codes; FlagImage returns null when missing.
-  - Reference: [flag.js:13-17](file://frontend/src/utils/flag.js#L13-L17), [FlagImage.jsx:16-19](file://frontend/src/components/FlagImage.jsx#L16-L19)
-- Broken alt text:
-  - Cause: alt not provided.
-  - Resolution: Pass alt prop or rely on default fallback to teamId.
-  - Reference: [FlagImage.jsx](file://frontend/src/components/FlagImage.jsx#L24)
-- Incorrect date/time display:
-  - Cause: locale mismatch or missing time.
-  - Resolution: Confirm useToSGT/useFormatDate bindings and presence of time field.
-  - References: [time.js:23-29](file://frontend/src/utils/time.js#L23-L29), [LanguageContext.jsx:48-52](file://frontend/src/contexts/LanguageContext.jsx#L48-L52)
-- SEO metadata not appearing:
-  - Cause: missing VITE_SITE_URL or incorrect path.
-  - Resolution: Set environment variables and ensure SEO is included in page layout.
-  - Reference: [SEO.jsx:3-22](file://frontend/src/components/SEO.jsx#L3-L22)
-- Ornament overlap or visibility:
-  - Cause: z-index or opacity conflicts.
-  - Resolution: Adjust opacity and className; ensure parent container allows absolute positioning.
-  - Reference: [TangOrnaments.jsx:37-84](file://frontend/src/components/TangOrnaments.jsx#L37-L84), [index.css:233-246](file://frontend/src/index.css#L233-L246)
+- Flag not appearing:
+  - Verify teamId exists in the flag mapping; otherwise getFlagUrl returns null.
+  - Confirm network connectivity and image URL validity.
+  - Check browser console for image load errors.
+- Broken image fallback:
+  - FlagImage hides the image on error; ensure alt text is meaningful.
+- Incorrect localization:
+  - Ensure LanguageContext is provided at the root and language toggled appropriately.
+  - Confirm translation keys exist for the selected language.
+- SEO metadata missing:
+  - Verify environment variables for site URL and Google verification token.
+  - Ensure SEO is included in the page that requires metadata.
+- PredictionBar misalignment:
+  - Ensure probabilities sum to approximately 1; slight rounding differences are acceptable.
+  - Confirm size prop is either 'md' or 'lg'.
 
 **Section sources**
-- [flag.js:13-17](file://frontend/src/utils/flag.js#L13-L17)
-- [FlagImage.jsx:16-29](file://frontend/src/components/FlagImage.jsx#L16-L29)
-- [time.js:23-29](file://frontend/src/utils/time.js#L23-L29)
-- [LanguageContext.jsx:48-52](file://frontend/src/contexts/LanguageContext.jsx#L48-L52)
-- [SEO.jsx:3-22](file://frontend/src/components/SEO.jsx#L3-L22)
-- [TangOrnaments.jsx:37-84](file://frontend/src/components/TangOrnaments.jsx#L37-L84)
-- [index.css:233-246](file://frontend/src/index.css#L233-L246)
+- [FlagImage.jsx:1-31](file://frontend/src/components/FlagImage.jsx#L1-L31)
+- [flag.js:1-18](file://frontend/src/utils/flag.js#L1-L18)
+- [LanguageContext.jsx:1-69](file://frontend/src/contexts/LanguageContext.jsx#L1-L69)
+- [SEO.jsx:1-50](file://frontend/src/components/SEO.jsx#L1-L50)
 
 ## Conclusion
-These reusable UI components form a cohesive design system that balances visual richness with performance and accessibility. They leverage shared utilities, contexts, and Tailwind-based styles to ensure consistency across pages. By following the documented props, data formats, and composition patterns, developers can integrate these components reliably while maintaining design system alignment.
+These UI components establish a cohesive, accessible, and performant interface for the tournament application. They leverage shared utilities, contexts, and decorative assets to deliver consistent visuals and internationalization. By following the documented composition patterns, prop validation, and optimization strategies, developers can extend and customize the components while maintaining quality and performance.
+
+[No sources needed since this section summarizes without analyzing specific files]
+
+## Appendices
+
+### Component Prop Reference Summary
+- FlagImage
+  - teamId: string
+  - className: string
+  - alt: string
+  - size: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | 'hero'
+- GroupTable
+  - group: string
+  - teams: array of team objects
+- MatchCard
+  - match: fixture object
+  - showPrediction: boolean
+- PredictionBar
+  - probHome: number
+  - probDraw: number
+  - probAway: number
+  - homeName: string
+  - awayName: string
+  - size: 'md' | 'lg'
+  - isKnockout: boolean
+- SEO
+  - title: string
+  - description: string
+  - path: string
+  - image: string
+  - jsonLd: object | array
+- TangOrnaments
+  - className: string
+  - opacity: number
+  - size: number
+
+[No sources needed since this section provides a summary]

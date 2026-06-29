@@ -1,97 +1,27 @@
-## Overview
+The WC2026 Qwen Prediction Platform employs a **console-based logging strategy** without a dedicated logging framework (e.g., Winston, Pino, or Bunyan). Logging is implemented using native Node.js `console` methods (`console.log`, `console.error`, `console.warn`) across the backend and frontend.
 
-The WC2026 AI Prediction Platform does **not** use a dedicated logging framework (e.g., Winston, Pino, Bunyan, or debug). All logging is performed via Node.js built-in `console` methods (`console.log`, `console.error`, `console.warn`). There is no structured logging, no log-level configuration, no log rotation, and no centralized logger initialization.
+### 1. System Approach
+- **Native Console Methods**: The application relies entirely on `console.log` for informational output, `console.error` for exceptions and critical failures, and `console.warn` for non-fatal issues or fallbacks.
+- **No Structured Logging**: Logs are primarily human-readable strings. There is no consistent JSON structured logging format for machine parsing in production sinks.
+- **Emoji Prefixes**: Backend logs frequently use emoji prefixes (e.g., `⚽`, `📊`, `🌱`, `✅`, `⏭️`) to visually categorize log output in terminal environments.
+- **Contextual Tagging**: Critical background jobs (cron tasks) and agent sessions use bracketed tags (e.g., `[cron]`, `[AgentSession]`, `[generateInsight]`) to identify the source of the log entry.
 
-## What System Is Used
+### 2. Key Files and Packages
+- **`backend/server.js`**: The main entry point uses `console.log` for startup messages and cron job status updates. It uses `console.error` for unhandled cron failures.
+- **`backend/services/agentFramework.js`**: Extensively uses `console.log` for multi-agent session lifecycle events (dispatch, conflict detection, resolution) and `console.warn`/`console.error` for LLM parsing failures or API errors.
+- **`backend/services/predictionEngine.js`**: Uses `console.warn` when fallback mechanisms are triggered (e.g., Qwen insight generation failure, form fetch failure).
+- **`backend/services/dataService.js`**: Uses `console.warn` for API fallbacks (e.g., when football-data.org fails and scraping is attempted) and `console.error` for sync failures.
+- **`frontend/src/pages/*.jsx`**: Frontend components use `console.error` sparingly for caught promise rejections during data fetching.
 
-- **Logging mechanism**: Raw `console.log()`, `console.error()`, `console.warn()` calls scattered throughout the codebase.
-- **No logging library**: Neither `backend/package.json` nor `frontend/package.json` lists any logging dependency.
-- **No log files**: No `log/` directory, no file-based sinks, no log aggregation.
-- **No structured format**: Log messages are free-form strings with emoji prefixes for visual categorization (e.g., `⚽`, `🏆`, `✅`, `⚠️`, `📐`).
+### 3. Architecture and Conventions
+- **Error Handling**: Most asynchronous operations are wrapped in `try/catch` blocks. Errors are logged to `console.error` with a descriptive message and the error object (`e.message`).
+- **Fallback Transparency**: When external services (APIs, LLMs) fail, the system logs a warning and proceeds with a fallback (e.g., synthetic data, default probabilities), ensuring availability over strict accuracy.
+- **Cron Job Visibility**: Scheduled tasks (prediction generation, lineup fetching, live result syncing) log their start, progress, and completion status to `console.log` to allow operators to monitor background health via stdout.
+- **Agent Session Auditing**: The multi-agent framework logs high-level negotiation steps (conflicts detected, resolutions applied) to `console.log`, providing a traceable audit trail in the server logs.
 
-## Key Files Where Logging Occurs
-
-### Backend (`backend/`)
-
-| File | Usage Pattern |
-|------|---------------|
-| `server.js` | Cron job status (`[cron] prediction run: ...`), startup messages, error catches in async handlers |
-| `services/bracketService.js` | Tournament simulation progress (`🏆 Knockout match stubs ensured`, `🏟️ Simulating R32…`) |
-| `services/calibrationService.js` | Calibration refit results (`📐 Calibration refit: T=...`) |
-| `services/dataService.js` | API/scrape failure warnings (`API form fetch failed for ${teamId}`) |
-| `services/analysisService.js` | Bracket advancement errors (`bracketService error: ...`) |
-| `database/seed.js` | Seeding progress (`🌱 Seeding teams...`, `✅ Seed complete!`) |
-| `scripts/*.js` | Backtest output, comparison tables, tuning results |
-
-### Frontend (`frontend/`)
-
-| File | Usage Pattern |
-|------|---------------|
-| `src/pages/Dashboard.jsx` | Error catch blocks (`console.error(e)`) |
-| `src/pages/MatchDetail.jsx` | Error catch blocks (`console.error(e)`) |
-| Other page components | `.catch(console.error)` chains on API calls |
-
-## Architecture and Conventions
-
-### Emoji-Prefixed Visual Categorization
-
-Log messages use emoji prefixes as an informal severity/category signal:
-
-- `✅` — Success/completion
-- `⚠️` / `⚠` — Warnings, non-critical issues
-- `🏆` — Tournament/bracket operations
-- `📐` — Calibration/statistical operations
-- `🌱` — Database seeding
-- `[cron]` — Scheduled job output (plain-text prefix)
-
-### Error Handling Pattern
-
-Errors are caught and logged with `console.error()` but rarely re-thrown or escalated:
-
-```javascript
-try {
-  await predict(m.id, true);
-} catch (e) {
-  console.error(`[cron] predict ${m.id} failed:`, e.message);
-}
-```
-
-In several places, errors are silently swallowed:
-
-```javascript
-try { await predict(m.id, false); } catch { /* silent — non-critical */ }
-```
-
-### No Log-Level Strategy
-
-There is no distinction between `INFO`, `DEBUG`, `WARN`, or `ERROR` at the framework level. The choice of `console.log` vs `console.warn` vs `console.error` is ad-hoc and inconsistent:
-
-- `console.log` is used for both informational progress and operational output.
-- `console.warn` appears in data-service fallback paths (API failures).
-- `console.error` is used in catch blocks and cron failures.
-
-### No Structured Fields
-
-Log entries are unstructured strings. There are no JSON-formatted logs, no correlation IDs, no request tracing, and no timestamp injection (relying on the runtime's default console timestamp behavior).
-
-## Rules Developers Should Follow
-
-1. **Continue using `console` methods** — Do not introduce a logging framework unless there is a clear operational need (e.g., production log aggregation).
-2. **Use emoji prefixes consistently** — When adding new log statements, follow the existing emoji convention for visual scanning:
-   - `✅` for success
-   - `⚠️` for warnings
-   - `❌` or no emoji for errors (let `console.error` handle severity)
-   - Domain-specific emojis (e.g., `🏆` for bracket, `📐` for calibration)
-3. **Prefer `console.error` in catch blocks** — Always include the error message: `console.error('context:', e.message)`.
-4. **Avoid silent catches** — If an error is truly non-critical, add a comment explaining why (`/* silent — non-critical */`).
-5. **Do not log sensitive data** — No API keys, tokens, or PII should appear in console output.
-6. **Frontend: keep console usage minimal** — Frontend logging is limited to error catches. Avoid `console.log` in UI rendering paths.
-7. **Scripts: verbose output is acceptable** — One-off scripts (`scripts/*.js`) may produce detailed terminal output for debugging and validation purposes.
-
-## Confidence
-
-This assessment is based on:
-- Complete scan of `package.json` dependencies (no logging libraries present).
-- Grep searches across all `.js` and `.jsx` files confirming exclusive use of `console.*`.
-- Review of key entry points (`server.js`, `predictionEngine.js`, `dataService.js`, `bracketService.js`) showing consistent patterns.
-- No `log/`, `logging/`, or logger-initialization files found anywhere in the repository.
+### 4. Rules for Developers
+- **Use `console.error` for Exceptions**: Always use `console.error` when catching an exception that disrupts normal flow or requires attention.
+- **Use `console.warn` for Fallbacks**: Use `console.warn` when a non-critical service fails but a fallback is available (e.g., API timeout, LLM parse error).
+- **Use `console.log` for Lifecycle Events**: Use `console.log` for significant state changes, startup events, and cron job completions.
+- **Include Context**: When logging errors, include a descriptive prefix (e.g., `[cron]`, `[AgentSession]`) to easily filter logs in production monitoring.
+- **Avoid Sensitive Data**: Do not log raw API keys, user PII, or full internal objects unless necessary for debugging. Stick to `e.message` or summarized state.

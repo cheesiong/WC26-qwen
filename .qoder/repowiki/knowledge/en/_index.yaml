@@ -3,19 +3,21 @@ schema_version: 1
 locale: en-US
 branch: master
 nodes_managed: true
-exported_at: "2026-06-29T02:28:31Z"
+exported_at: "2026-06-29T11:55:12Z"
 modules:
     "":
-        dir_name: WC2026 Multi-Agent Prediction Platform
-        title: WC2026 Multi-Agent Prediction Platform
+        dir_name: WC2026 Qwen Prediction Platform
+        title: WC2026 Qwen Prediction Platform
         scope:
             - README.md
-            - SETUP.md
             - AGENTS.md
+            - SETUP.md
             - .gitignore
-            - deploy.sh
             - docker-compose.yml
+            - deploy.sh
             - setup-ecs.sh
+            - sync-db.sh
+            - World_Cup_2026_Knockout_Bracket.md
             - specs/
             - architecture-diagram.png
             - hackathon-thumbnail.png
@@ -31,10 +33,21 @@ modules:
             - screenshot-hero-chinese-light-verify.png
             - screenshot-hero-chinese-light.png
             - screenshot-initial.png
+            - screenshot-lineup-match-A1.png
+            - screenshot-lineup-r32-01-expanded.png
+            - screenshot-lineup-r32-01-full.png
+            - screenshot-lineup-r32-01.png
             - screenshot-predictions-bottom.png
+            - screenshot-predictions-final.png
             - screenshot-predictions-fullpage.png
+            - screenshot-predictions-ko-filter.png
             - screenshot-predictions-middle.png
+            - screenshot-predictions-r32-check.png
+            - screenshot-predictions-r32-verify.png
             - screenshot-predictions-top.png
+            - screenshot-predictions-verify.png
+            - screenshot-site-https-verify.png
+            - screenshot-site-verify.png
             - start.sh
         source_files: []
         children:
@@ -43,53 +56,29 @@ modules:
         depends_on: []
         related_to: []
     backend:
-        dir_name: WC2026 Multi-Agent Prediction Orchestrator
-        title: WC2026 Multi-Agent Prediction Orchestrator
+        dir_name: Multi-Agent Prediction & Post-Match Analysis
+        title: Multi-Agent Prediction & Post-Match Analysis
         scope:
             - backend/
         source_files: []
-        children:
-            - backend/agent_framework
-            - backend/tuning_scripts
+        children: []
         depends_on: []
         related_to:
             - path: frontend
-    backend/agent_framework:
-        dir_name: Multi-Agent Prediction Framework
-        title: Multi-Agent Prediction Framework
-        scope:
-            - backend/services/agents/
-        source_files: []
-        children: []
-        depends_on: []
-        related_to: []
-    backend/tuning_scripts:
-        dir_name: Football Prediction Model Tuning & Backtesting
-        title: Football Prediction Model Tuning & Backtesting
-        scope:
-            - backend/scripts/
-        source_files: []
-        children: []
-        depends_on: []
-        related_to: []
     build_system:
         dir_name: Monorepo Build & Deployment with Docker Compose and ECS Automation
         title: Monorepo Build & Deployment with Docker Compose and ECS Automation
         scope: []
         source_files:
-            - backend/package.json
-            - frontend/package.json
-            - backend/Dockerfile
-            - frontend/Dockerfile
             - docker-compose.yml
             - deploy.sh
             - setup-ecs.sh
             - start.sh
+            - backend/Dockerfile
+            - frontend/Dockerfile
             - frontend/entrypoint.sh
-            - frontend/vite.config.js
-            - frontend/vercel.json
-            - backend/eslint.config.mjs
-            - frontend/eslint.config.mjs
+            - backend/package.json
+            - frontend/package.json
         children: []
         depends_on: []
         related_to: []
@@ -98,17 +87,18 @@ modules:
         title: Environment-Driven Configuration with Docker Compose Orchestration
         scope: []
         source_files:
+            - docker-compose.yml
             - backend/.env.example
             - frontend/.env.example
-            - docker-compose.yml
             - backend/server.js
+            - backend/database/db.js
             - frontend/vite.config.js
             - frontend/entrypoint.sh
             - frontend/nginx.conf.template
+            - frontend/nginx-ssl.conf.template
             - deploy.sh
-            - backend/services/predictionEngine.js
-            - backend/services/qwenClient.js
-            - backend/services/dataService.js
+            - start.sh
+            - frontend/src/api/client.js
         children: []
         depends_on: []
         related_to: []
@@ -133,20 +123,19 @@ modules:
         scope: []
         source_files:
             - backend/server.js
-            - backend/services/predictionEngine.js
-            - backend/services/dataService.js
             - backend/services/qwenClient.js
-            - backend/services/analysisService.js
-            - backend/database/db.js
+            - backend/services/dataService.js
+            - backend/services/predictionEngine.js
             - frontend/src/api/client.js
             - frontend/src/pages/Dashboard.jsx
             - frontend/src/pages/MatchDetail.jsx
+            - backend/database/db.js
         children: []
         depends_on: []
         related_to: []
     frontend:
-        dir_name: World Cup 2026 Prediction Frontend
-        title: World Cup 2026 Prediction Frontend
+        dir_name: World Cup 2026 Prediction Web Application
+        title: World Cup 2026 Prediction Web Application
         scope:
             - frontend/
         source_files: []
@@ -161,10 +150,9 @@ modules:
         source_files:
             - frontend/tailwind.config.js
             - frontend/src/index.css
-            - frontend/postcss.config.js
             - frontend/src/contexts/ThemeContext.jsx
-            - frontend/src/utils/chartColors.js
             - frontend/src/components/TangOrnaments.jsx
+            - frontend/postcss.config.js
             - frontend/src/App.jsx
             - frontend/src/components/MatchCard.jsx
         children: []
@@ -176,13 +164,10 @@ modules:
         scope: []
         source_files:
             - backend/server.js
-            - backend/services/bracketService.js
+            - backend/services/agentFramework.js
+            - backend/services/predictionEngine.js
             - backend/services/dataService.js
-            - backend/services/calibrationService.js
-            - backend/services/analysisService.js
-            - backend/database/seed.js
-            - frontend/src/pages/Dashboard.jsx
-            - frontend/src/pages/MatchDetail.jsx
+            - backend/scripts/backtestHarness.js
         children: []
         depends_on: []
         related_to: []

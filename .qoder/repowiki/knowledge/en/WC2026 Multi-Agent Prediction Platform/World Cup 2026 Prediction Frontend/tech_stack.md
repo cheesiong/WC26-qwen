@@ -1,4 +1,0 @@
-- **Build & Tooling**: Vite 5, Vitest for testing, ESLint 9, Prettier.
-- **Styling**: Tailwind CSS 3 with PostCSS and Autoprefixer.
-- **Visualization**: Recharts for data charts, Framer Motion for animations, Lucide React for icons.
-- **Pre-rendering**: `react-snap` configured in `package.json` to snapshot routes for SEO.

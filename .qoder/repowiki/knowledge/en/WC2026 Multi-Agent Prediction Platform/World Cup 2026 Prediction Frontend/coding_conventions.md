@@ -1,4 +1,0 @@
-- Use of custom hooks `useT()`, `useFormatDate()`, and `useTeamName()` from `LanguageContext` to handle all user-facing text and date formatting, ensuring consistent bilingual support.
-- Integration of decorative SVG components (`DragonWatermark`, `QilinMark`, etc.) from `TangOrnaments.jsx` into page headers and cards to maintain a consistent "Tang Dynasty" visual theme.
-- Centralized API calls in `src/api/client.js` using Axios instances with base URLs derived from `import.meta.env.VITE_API_URL`, keeping data fetching logic separate from UI components.
-- Conditional hydration in `main.jsx` that checks for existing DOM nodes to decide between `hydrateRoot` (for pre-rendered content) and `createRoot` (for standard SPA startup).

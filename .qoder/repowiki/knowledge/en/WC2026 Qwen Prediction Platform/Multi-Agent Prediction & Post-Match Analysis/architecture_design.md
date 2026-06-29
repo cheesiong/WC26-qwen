@@ -1,0 +1,4 @@
+- **Agent Framework**: Implements a multi-agent system (`agentFramework.js`) with specialized roles (Statistical, Form, H2H, Intel, Lineup) coordinated by an `orchestratorAgent.js`.
+- **LLM Integration**: Uses `qwenClient.js` to interface with Alibaba Cloud DashScope, routing tasks to specific Qwen models (max, plus, turbo) based on complexity.
+- **Analysis Pipeline**: `analysisService.js` handles post-match logic, including Brier score computation, points allocation, and idempotent updates to group standings and ELO ratings.
+- **Calibration Loop**: Triggers periodic refitting of calibration parameters (`calibrationService.js`) after every 10 completed matches to maintain probability accuracy.

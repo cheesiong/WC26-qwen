@@ -1,130 +1,177 @@
-# Frontend Styling Architecture
+## Overview
 
-## Design Philosophy
+The WC2026 Qwen Prediction Platform employs a **Chinese landscape painting (山水画) aesthetic** built on **Tailwind CSS** with extensive custom design tokens, component classes, and dark/light theme support. The system merges traditional Chinese artistic motifs (ink-wash gradients, terracotta reds, amber golds, pine greens) with modern Apple-style glassmorphism and responsive layouts.
 
-The WC2026 AI Prediction Platform employs a **Chinese landscape painting (山水画)** aesthetic fused with modern Apple-style minimalism. This unique design language combines traditional Chinese artistic motifs—ink-wash gradients, terracotta reds, amber golds, and pine greens—with contemporary glassmorphism, smooth transitions, and responsive layouts.
+---
 
-## Core Technology Stack
+## Technology Stack
 
-- **CSS Framework**: Tailwind CSS v3+ with custom configuration
-- **Build Pipeline**: PostCSS + Autoprefixer via `postcss.config.js`
-- **Dark Mode Strategy**: Class-based (`darkMode: 'class'`) toggled via React context
-- **Font System**: Custom font stacks for sans-serif (Plus Jakarta Sans), serif (Noto Serif SC, Ma Shan Zheng), and calligraphy display text
+- **CSS Framework**: Tailwind CSS v3.x with PostCSS pipeline (`tailwindcss` + `autoprefixer`)
+- **Build Tool**: Vite for bundling and development server
+- **Theme Management**: React Context (`ThemeContext.jsx`) with `localStorage` persistence and `prefers-color-scheme` detection
+- **Font Families**:
+  - Sans: `Plus Jakarta Sans`, `-apple-system`, `BlinkMacSystemFont`, `SF Pro Display`
+  - Serif/Display: `Noto Serif SC`, `Ma Shan Zheng` (calligraphy font)
+  - Calligraphy: `Ma Shan Zheng` for decorative elements
 
-## Key Configuration Files
+---
 
-### `frontend/tailwind.config.js` — Design Token Registry
+## Color System & Design Tokens
 
-This is the central design system file defining:
+### Four Named Palettes in `tailwind.config.js`
 
-**Color Palettes** (4 named namespaces):
-- `cn.*` — Chinese landscape painting palette (terracotta crimson `#C0392B`, warm amber gold `#D4A03C`, ink-wash navy `#1C2833`, rice paper `#FAF3EB`, pine green `#4A7C59`)
-- `apple.*` — Remapped Apple-style tokens using the landscape palette for semantic roles (bg, surface, raised, text, blue/green/orange accents)
-- `fifa.*` / `wc.*` — World Cup-specific color mappings
+1. **`cn` (Chinese landscape)** — Primary palette with semantic names:
+   - `cn-red` / `cn-red-hover`: Terracotta crimson (#C0392B → #A93226)
+   - `cn-gold` / `cn-gold-hi`: Warm amber gold (#D4A03C → #E8C547)
+   - `cn-ink` / `cn-ink-light`: Ink-wash navy (#1C2833 → #2C3E50)
+   - `cn-paper` / `cn-paper-warm`: Rice paper warm white (#FAF3EB → #F5E6D3)
+   - `cn-jade`: Pine green (#4A7C59), `cn-vermilion`: Persimmon orange (#E67E22)
+   - Accent colors: `cn-peach`, `cn-sky`, `cn-cherry`, `cn-wisteria`, `cn-persimmon`
 
-**Gradient System** (20+ predefined gradients):
-- Imperial gradients (`grad-imperial`, `grad-trophy`) — terracotta-to-gold transitions
-- Ink-wash gradients (`grad-ink`, `grad-ink-wash`, `grad-ink-gold`) — dark navy/slate blends
-- Landscape gradients (`grad-landscape`, `grad-mountain`, `grad-water`, `grad-foliage`, `grad-sunrise`) — multi-color scenic transitions
-- Tang Dynasty gradients (`grad-tang`, `grad-tang-gold`, `grad-tang-lacquer`, `grad-tang-palace`) — deep historical color schemes
+2. **`apple`** — Remapped to landscape palette for UI consistency:
+   - `apple-bg` = rice paper, `apple-surface` = light paper, `apple-text` = ink-wash navy
+   - `apple-blue` = terracotta (primary action color, not blue)
+   - `apple-green` = pine green, `apple-orange` = amber gold
 
-**Shadow System** (15+ shadow utilities):
-- Apple-style shadows (`shadow-apple-sm/md/lg/xl`) — subtle depth with ink-wash navy tints
-- Glow effects (`shadow-glow-red/blue/gold/pitch`) — colored ambient glows
-- Thematic shadows (`shadow-tang`, `shadow-tang-lg`, `shadow-ink`, `shadow-gold-glow`) — theme-specific depth
+3. **`fifa`** / **`wc`** — World Cup branding aliases mapped to the same terracotta/gold/jade tokens
 
-**Typography Scale**:
-- Fluid display sizes using `clamp()` for responsive scaling
-- Dedicated eyebrow, caption, and heading scales with tight letter-spacing
+### Gradient System
 
-**Border Radius Tokens**:
-- Extended radii up to `5xl` (34px) and `pill` (999px) for rounded UI elements
-- `seal` (6px) for stamp-like decorative elements
+~30 named gradients in `backgroundImage` config:
+- `grad-imperial`: Terracotta → amber
+- `grad-ink-wash`: Multi-stop ink-wash navy gradient
+- `grad-landscape`: Red → orange → gold sunrise gradient
+- `grad-tang`, `grad-tang-gold`, `grad-tang-lacquer`: Tang dynasty-inspired deep terracotta palettes
+- `grad-mountain`, `grad-water`, `grad-foliage`: Nature-themed gradients
+- Hero gradients: `grad-hero-light` / `grad-hero-dark` with radial accent glows
 
-### `frontend/src/index.css` — Component Layer & Theme Overrides
+### Shadow System
 
-This 785-line stylesheet defines:
+Named shadows follow two families:
+- **Apple-style**: `shadow-apple-sm/md/lg/xl` — subtle layered shadows with ink-wash navy tint
+- **Glow effects**: `shadow-glow-red/gold/pitch` — colored glow shadows for interactive states
+- **Landscape-specific**: `shadow-tang/tang-lg/tang-gold/tang-lacquer` — warm terracotta/amber-tinted shadows
+- **Ink shadows**: `shadow-ink/ink-lg` — deep navy shadows for dark-mode cards
 
-**CSS Custom Properties** (light/dark mode tokens):
-- `--dk-*` variables for dark mode surfaces, text, and accent colors
-- `--wc-*` variables mirroring the Tailwind palette for runtime theme switching
+---
 
-**Base Layer**:
-- Body background with SVG ink-wash mountain silhouette pattern (fixed, low opacity)
-- Ambient radial gradient glows positioned at viewport corners
-- Dark mode variants that intensify patterns and shift glow colors
+## Component Classes (in `index.css`)
 
-**Component Classes** (reusable card/button primitives):
-- `.card` — Base card with apple-surface background, subtle border, and hover lift
-- `.tang-card` — Landscape-themed card with parchment gradient and amber border
-- `.tang-palace` — Ink-wash dark card for elevated sections
-- `.tang-lacquer` — Terracotta-orange gradient card for emphasis
-- `.imperial-card` — Warm rice paper gradient with amber hairline border
-- `.glass-card` / `.glass-card-solid` — Frosted glassmorphism with backdrop blur
-- `.btn-primary` / `.btn-secondary` / `.btn-wc` — Button variants with active scale feedback
-- `.chip-gold` — Gold-accented badge/chip component
-- `.eyebrow` — Uppercase tracking label text
-- `.seal-stamp` — Rotated seal-stamp decorative element
+### Card Variants
 
-**Decorative Utilities**:
-- `.tang-divider` / `.meander-divider` — SVG wave/brushstroke horizontal dividers
-- `.tang-bat-bg` — Pine branch pattern background tile
-- `.tang-border` / `.imperial-border` — Amber double-line border effects
-- Watermark classes (`.tang-dragon`, `.tang-phoenix`, `.tang-qilin-mark`, `.tang-bat-cluster`) — SVG ornament overlays
+| Class | Description |
+|-------|-------------|
+| `.card` | Base card: rice paper surface, thin border, apple-sm shadow |
+| `.card-hero` | Warm rice paper gradient with amber hairline border |
+| `.card-imperial` | Terracotta gradient card (red → deep red → lacquer) |
+| `.card-pitch` | Pine green gradient card |
+| `.card-trophy` | Gold → red sunset gradient |
+| `.card-night` | Ink-wash navy gradient for dark contexts |
+| `.tang-card` | Landscape parchment card with multi-stop warm gradient |
+| `.tang-lacquer` | Deep terracotta-orange gradient card |
+| `.tang-palace` | Ink-wash palace card (dark navy gradient) |
+| `.ink-card` | Ink-wash navy with amber accent border |
+| `.glass-card` / `.glass-card-solid` | Frosted glassmorphism with backdrop blur |
 
-**Dark Mode Overrides** (outside `@layer` for cascade priority):
-- Comprehensive `.dark` prefixed rules overriding all component backgrounds, borders, text colors, and shadows
-- Opacity-modified utility overrides for `bg-black/*`, `bg-white/*`, `border-black/*` to ensure correct contrast in dark mode
-- Chart bracket stroke variable override (`--bracket-stroke`)
+### Button Classes
 
-## Theme Management
+- `.btn-primary`: Terracotta red pill button with hover glow ring
+- `.btn-secondary`: Translucent white pill with backdrop blur
+- `.btn-wc`: World Cup branded terracotta button
 
-### `frontend/src/contexts/ThemeContext.jsx`
+### Decorative Utilities
 
-React context provider managing:
-- Theme state persisted to `localStorage` (`wc26-theme`)
-- System preference detection via `prefers-color-scheme` media query
-- DOM class toggle on `<html>` element for Tailwind's `dark:` variant
-- Toggle function exposed via `useTheme()` hook
+- `.chip-gold`: Amber badge for confidence/status labels
+- `.eyebrow`: Uppercase tracked label text in terracotta
+- `.seal-stamp`: Rotated seal-stamp style badge
+- `.tang-divider` / `.meander-divider`: SVG wave/brushstroke dividers
+- `.tang-bat-bg`: Pine branch pattern background (SVG tile)
+- `.tang-dragon` / `.tang-phoenix`: Mountain/boat watermarks via `::before` pseudo-elements
+- `.tang-qilin-mark`: Pine tree corner accent
 
-## Chart Color Constants
+---
 
-### `frontend/src/utils/chartColors.js`
+## Theme System
 
-Hex constants for Recharts/SVG fill/stroke (Tailwind classes don't apply to SVG attributes):
-- `WC_BLUE`, `WC_RED`, `WC_GOLD`, `WC_PITCH`, `WC_SUNSET`, `WC_SKY`
-- `CHART_PALETTE` array for sequential color assignment
+### Architecture
 
-Note: These hex values differ from the Tailwind palette, suggesting charts use a separate color scheme not fully aligned with the landscape painting theme.
+- **`ThemeContext.jsx`**: Manages `theme` state (`'light'` | `'dark'`), persists to `localStorage` under key `wc26-theme`, initializes from OS preference via `matchMedia('(prefers-color-scheme: dark)')`
+- **Toggle mechanism**: Toggles `dark` class on `<html>` element; all dark-mode styles use `.dark` selector prefixes
+- **CSS Variables**: `:root` defines light-mode values; `.dark` overrides redefine variables for dark mode (e.g., `--dk-bg: #1C2833`, `--dk-surface: #2C3E50`)
 
-## Decorative Ornament Components
+### Dark Mode Strategy
 
-### `frontend/src/components/TangOrnaments.jsx`
+Dark mode is implemented via **comprehensive `.dark` selector overrides** in `index.css` (~370 lines of dark-mode rules):
 
-Reusable SVG watermark components implementing landscape painting motifs:
-- `DragonWatermark` — Layered mountain silhouettes with mist, waterfall lines, pine trees, birds, and sun/moon circle
-- `PhoenixWatermark` — Traditional junk boat with sails, water ripples, distant mountains, flying birds, and lantern
-- `QilinMark` — Stylized pine branch for card corner accents
-- `BatCluster` — Three traditional Chinese lanterns with connecting strings
-- `DragonPhoenixPair` — Combined mountain-and-boat composition for wide banners
+- Body background switches to ink-wash navy (`#1C2833`)
+- All card variants have dark-mode equivalents with adjusted gradients and borders
+- Text color utilities (`.text-apple-text`, `.text-apple-secondary`, etc.) remap to light-on-dark values
+- Border colors flip from `border-black/*` to `border-white/*` opacity variants
+- Glassmorphism cards adjust blur saturation and border transparency
+- Ambient body `::before`/`::after` patterns increase opacity and switch stroke colors for visibility
 
-All ornaments use inline SVG gradients defined in shared `LandscapeDefs` component, with configurable opacity and size props.
+### Ambient Background Effects
+
+Light mode:
+- `body::before`: Ink-wash mountain silhouette SVG pattern at 4% opacity
+- `body::after`: Warm amber/peach radial glow at top-right
+
+Dark mode:
+- Pattern opacity increases to 8%, strokes switch to gold/red/green
+- Additional ambient glows on `#root::before`/`::after` (cherry blossom pink, emerald green)
+
+---
 
 ## Responsive Strategy
 
-- **Mobile-first** Tailwind approach with `md:` breakpoint for desktop enhancements
-- **Safe area support** via `env(safe-area-inset-*)` for notch/home indicator devices
-- **Fluid typography** using `clamp()` for display headings
-- **Fixed navigation** with backdrop blur on both desktop (top bar) and mobile (bottom tab bar)
-- **Main content padding** accounts for fixed nav heights and safe areas
+- **Mobile-first**: Tailwind's default breakpoint system (`sm:`, `md:`, `lg:`, `xl:`)
+- **Safe area insets**: Navigation bars use `env(safe-area-inset-*)` for notch/home-indicator compatibility
+- **Fluid typography**: `clamp()`-based display sizes (`text-display`, `text-h1`, `text-h2`) scale across viewports
+- **Layout breakpoints**: Desktop nav (`md:block`) vs mobile top bar + bottom tab bar (`md:hidden`)
+
+---
+
+## SVG Ornament System (`TangOrnaments.jsx`)
+
+Reusable React components render landscape painting motifs as absolute-positioned SVG overlays:
+
+- **`DragonWatermark`**: Layered mountain silhouettes with mist, waterfall lines, pine trees, sun/moon circle, birds
+- **`PhoenixWatermark`**: Traditional junk boat with sails, water ripples, distant mountains, lantern
+- **`QilinMark`**: Stylized pine branch for card corners
+- **`BatCluster`**: Three hanging Chinese lanterns with connecting strings
+- **`DragonPhoenixPair`**: Combined mountain + boat ornament for wide banners
+
+These are used as decorative accents on cards and hero sections with configurable `opacity` and `size` props.
+
+---
 
 ## Developer Conventions
 
-1. **Card Usage**: Prefer `.tang-card` as the default container; use `.tang-palace` for dark/elevated sections; use `.imperial-card` for warm highlighted content
-2. **Color Semantics**: Use `cn-*` tokens for direct color references; use `apple-*` tokens for semantic roles (bg, surface, text)
-3. **Hover Effects**: Cards use `.hover:-translate-y-[2px]` or `[3px]` with shadow transitions; buttons use `active:scale-[0.97]` for tactile feedback
-4. **Dark Mode Testing**: All new components must verify appearance in both light and dark modes; check that `text-white/*` opacity classes are overridden in `.dark .tang-palace` selectors
-5. **SVG Ornaments**: Import from `TangOrnaments.jsx` and position absolutely within relative containers; adjust opacity (typically 0.14–0.28) for subtlety
-6. **Gradient Text**: Use inline styles with `WebkitBackgroundClip: 'text'` and `WebkitTextFillColor: 'transparent'` for gradient text effects (Tailwind doesn't support this natively)
-7. **Backdrop Blur**: Apply `backdrop-filter: saturate(200%) blur(24–28px)` to floating navigation bars for iOS-style frosted glass
-8. **Border Colors**: Use `border-cn-gold/20` or `border-cn-gold/10` for subtle amber hairlines; avoid pure black/white borders
+### Adding New Styles
+
+1. **Define tokens first**: Add new colors/gradients/shadows to `tailwind.config.js` before using them
+2. **Create component classes**: Define reusable classes in `@layer components` of `index.css`
+3. **Add dark-mode overrides**: Every new component class needs a `.dark .class-name` rule
+4. **Use CSS variables**: Centralize theme-dependent values in `:root` / `.dark :root`
+5. **Test both modes**: Verify contrast ratios and visual coherence in light and dark themes
+
+### Naming Conventions
+
+- Prefix landscape-specific tokens with `cn-` or `tang-`
+- Use semantic names (`red`, `gold`, `jade`, `ink`) rather than literal color names
+- Apple-style remapping uses `apple-*` prefix but maps to landscape palette values
+
+### Usage Patterns
+
+- Cards typically combine a base class (`.tang-card`) with hover modifiers (`.hover:-translate-y-[2px]`)
+- Buttons use pill-shaped `rounded-full` with active scale feedback (`active:scale-[0.97]`)
+- Gradients applied via inline `style={{ backgroundImage: '...' }}` for dynamic compositions
+- Ornaments placed as absolute children with low opacity (0.12–0.28) for subtle decoration
+
+### Key Files
+
+- `frontend/tailwind.config.js` — Design token definitions (colors, fonts, gradients, shadows)
+- `frontend/src/index.css` — Custom component classes, dark-mode overrides, ambient effects
+- `frontend/src/contexts/ThemeContext.jsx` — Theme state management
+- `frontend/src/components/TangOrnaments.jsx` — SVG landscape ornament components
+- `frontend/postcss.config.js` — PostCSS plugin configuration

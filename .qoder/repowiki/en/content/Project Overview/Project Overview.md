@@ -4,18 +4,19 @@
 **Referenced Files in This Document**
 - [README.md](file://README.md)
 - [SPEC.md](file://specs/SPEC.md)
-- [AGENTS.md](file://AGENTS.md)
-- [backend/package.json](file://backend/package.json)
-- [frontend/package.json](file://frontend/package.json)
-- [backend/services/predictionEngine.js](file://backend/services/predictionEngine.js)
-- [backend/services/agents/orchestratorAgent.js](file://backend/services/agents/orchestratorAgent.js)
-- [backend/services/calibrationService.js](file://backend/services/calibrationService.js)
-- [backend/data/teams.js](file://backend/data/teams.js)
-- [frontend/src/pages/Dashboard.jsx](file://frontend/src/pages/Dashboard.jsx)
-- [frontend/src/pages/Schedule.jsx](file://frontend/src/pages/Schedule.jsx)
-- [frontend/src/pages/Groups.jsx](file://frontend/src/pages/Groups.jsx)
-- [frontend/src/pages/Tournament.jsx](file://frontend/src/pages/Tournament.jsx)
-- [frontend/src/api/client.js](file://frontend/src/api/client.js)
+- [SPEC-PREDICT.md](file://specs/SPEC-PREDICT.md)
+- [server.js](file://backend/server.js)
+- [db.js](file://backend/database/db.js)
+- [predictionEngine.js](file://backend/services/predictionEngine.js)
+- [orchestratorAgent.js](file://backend/services/agents/orchestratorAgent.js)
+- [App.jsx](file://frontend/src/App.jsx)
+- [client.js](file://frontend/src/api/client.js)
+- [Dashboard.jsx](file://frontend/src/pages/Dashboard.jsx)
+- [Groups.jsx](file://frontend/src/pages/Groups.jsx)
+- [Tournament.jsx](file://frontend/src/pages/Tournament.jsx)
+- [GroupTable.jsx](file://frontend/src/components/GroupTable.jsx)
+- [package.json](file://backend/package.json)
+- [package.json](file://frontend/package.json)
 </cite>
 
 ## Table of Contents
@@ -31,444 +32,555 @@
 
 ## Introduction
 
-WC26-Qwen-Qoder is a World Cup 2026 prediction application powered by Alibaba Cloud's Qwen multi-agent AI system. The platform provides comprehensive coverage of all 48 teams, 72 group stage fixtures, and the knockout bracket through to the final. Built as a full-stack web application, it combines advanced sports analytics with cutting-edge AI to deliver accurate, explainable match predictions and rich tournament insights.
+The World Cup 2026 Prediction App is an AI-powered sports analytics platform designed to deliver comprehensive coverage of the FIFA World Cup 2026 tournament. Built with a focus on transparency, accuracy, and accessibility, the platform combines advanced statistical modeling with a multi-agent AI system to provide pre-match predictions, live match tracking, and deep analytical insights.
 
-The application serves football fans worldwide who want to track live results, understand group standings, explore the knockout bracket, and gain deep analytical insights powered by AI. It operates without requiring user registration, with data updated via automated systems.
-
-**Section sources**
-- [README.md:1-263](file://README.md#L1-L263)
-- [SPEC.md:1-205](file://specs/SPEC.md#L1-L205)
+The platform serves a diverse audience ranging from casual fans seeking entertaining predictions to serious sports analysts requiring detailed performance metrics. By leveraging cutting-edge AI technologies and maintaining strict data governance, the app transforms complex sports analytics into an intuitive, bilingual user experience.
 
 ## Project Structure
 
-The project follows a modern full-stack architecture with clear separation between frontend and backend concerns:
+The application follows a modern full-stack architecture with clear separation between frontend and backend concerns:
 
 ```mermaid
 graph TB
-subgraph "Frontend (React)"
-FE_API[API Client]
+subgraph "Frontend Layer"
+FE_REACT[React 18 Application]
 FE_PAGES[Pages & Components]
 FE_CONTEXT[Context Providers]
-FE_ROUTER[Routing & Navigation]
+FE_API[API Client]
 end
-subgraph "Backend (Node.js)"
+subgraph "Backend Layer"
 BE_SERVER[Express Server]
 BE_SERVICES[Business Services]
 BE_AGENTS[Multi-Agent System]
 BE_DATABASE[SQLite Database]
 end
 subgraph "External Services"
-QWEN[Alibaba Cloud Qwen]
-DATA_API[football-data.org]
+ALIYUN[Alibaba Cloud Qwen AI]
+FOOTBALL_API[football-data.org API]
+INDEX_NOW[IndexNow API]
 end
+FE_REACT --> FE_API
 FE_API --> BE_SERVER
-FE_PAGES --> FE_API
-FE_CONTEXT --> FE_API
-FE_ROUTER --> FE_PAGES
 BE_SERVER --> BE_SERVICES
 BE_SERVICES --> BE_AGENTS
 BE_SERVICES --> BE_DATABASE
-BE_AGENTS --> QWEN
-BE_SERVICES --> DATA_API
+BE_SERVER --> ALIYUN
+BE_SERVER --> FOOTBALL_API
+BE_SERVER --> INDEX_NOW
 ```
 
 **Diagram sources**
-- [backend/package.json:1-32](file://backend/package.json#L1-L32)
-- [frontend/package.json:1-72](file://frontend/package.json#L1-L72)
+- [server.js:18-22](file://backend/server.js#L18-22)
+- [client.js:1-50](file://frontend/src/api/client.js#L1-L50)
 
-The frontend is built with React 18, Vite, and Tailwind CSS, while the backend uses Node.js with Express. Both packages share ESLint and Prettier for code quality enforcement.
+The project is organized into three main directories:
+
+- **backend/**: Node.js/Express server with comprehensive prediction engine and multi-agent AI system
+- **frontend/**: React 18 application with bilingual interface and responsive design
+- **specs/**: Product specifications and technical documentation
 
 **Section sources**
-- [backend/package.json:1-32](file://backend/package.json#L1-L32)
-- [frontend/package.json:1-72](file://frontend/package.json#L1-L72)
+- [README.md:153-210](file://README.md#L153-L210)
+- [package.json:1-32](file://backend/package.json#L1-L32)
+- [package.json:1-72](file://frontend/package.json#L1-L72)
 
 ## Core Components
 
-### AI-Powered Prediction Engine
+### Prediction Engine Architecture
 
-The heart of WC26-Qwen-Qoder is its sophisticated prediction engine built on the Dixon-Coles bivariate Poisson model. This mathematical foundation provides realistic goal-scoring distributions while accounting for team strengths and home advantage effects.
-
-Key prediction engine features include:
-- **Dixon-Coles Poisson Model**: Advanced bivariate Poisson with low-score correction for more accurate goal probability calculations
-- **Dynamic Rating Updates**: Online updating of attack/defense ratings after each match result
-- **Signal Integration**: Multiple complementary signals integrated through log-pool blending
-- **Calibration**: Temperature scaling for improved probability calibration
-
-### Multi-Agent AI System
-
-When enabled, the system employs a sophisticated 5-agent AI architecture that runs in parallel:
-
-```mermaid
-sequenceDiagram
-participant Client as "User Interface"
-participant API as "Prediction Engine"
-participant Orchestrator as "Orchestrator Agent"
-participant Stat as "Statistical Agent"
-participant Form as "Form Agent"
-participant H2H as "H2H Agent"
-participant Intel as "Intel Agent"
-participant Lineup as "Lineup Agent"
-Client->>API : Request prediction
-API->>Orchestrator : Dispatch multi-agent prediction
-Orchestrator->>Stat : Analyze statistical backbone
-Orchestrator->>Form : Evaluate recent form
-Orchestrator->>H2H : Process head-to-head history
-Orchestrator->>Intel : Parse pre-match intelligence
-Orchestrator->>Lineup : Analyze confirmed lineups
-par Parallel Processing
-Stat-->>Orchestrator : Statistical analysis
-Form-->>Orchestrator : Form assessment
-H2H-->>Orchestrator : H2H insights
-Intel-->>Orchestrator : Intelligence summary
-Lineup-->>Orchestrator : Lineup strength
-end
-Orchestrator->>Orchestrator : Detect conflicts (≥20% delta)
-alt Conflicts detected
-Orchestrator->>Stat : Rebuttal round
-Orchestrator->>Form : Rebuttal round
-Orchestrator->>H2H : Rebuttal round
-Orchestrator->>Intel : Rebuttal round
-Orchestrator->>Lineup : Rebuttal round
-end
-Orchestrator->>API : Blend probabilities via log-pool
-API->>Client : Return final prediction
-```
-
-**Diagram sources**
-- [backend/services/agents/orchestratorAgent.js:278-468](file://backend/services/agents/orchestratorAgent.js#L278-L468)
-
-### User Interface Features
-
-The application provides a comprehensive set of features designed for optimal user experience:
-
-- **Dashboard**: Today's matches with win/draw/loss probabilities and tournament winner leaderboard
-- **Schedule**: Complete chronological list of all 104 matches with filtering capabilities
-- **Match Details**: Comprehensive prediction breakdown with multi-agent dialogue and historical analysis
-- **Group Standings**: Live points tables with qualification indicators and what-if scenario calculator
-- **Bracket Visualization**: Interactive knockout tree with winner probabilities and Road to Final view
-- **Team Profiles**: Per-team pages with group context and ELO rating trajectories
-- **Predictions Analytics**: Consolidated view of all predictions with accuracy metrics
-
-**Section sources**
-- [README.md:5-16](file://README.md#L5-L16)
-- [SPEC.md:31-122](file://specs/SPEC.md#L31-L122)
-
-## Architecture Overview
-
-The system architecture demonstrates a clean separation of concerns with robust data flow:
-
-```mermaid
-graph TB
-subgraph "Presentation Layer"
-UI_Dashboard[Dashboard Page]
-UI_Schedule[Schedule Page]
-UI_Groups[Group Standings]
-UI_Tournament[Tournament Bracket]
-UI_MatchDetail[Match Detail]
-end
-subgraph "API Layer"
-API_Matches[Matches API]
-API_Teams[Teams API]
-API_Groups[Groups API]
-API_Tournament[Tournament API]
-API_Analytics[Analytics API]
-end
-subgraph "Business Logic"
-BL_Prediction[Prediction Engine]
-BL_Agents[Multi-Agent System]
-BL_Calibration[Calibration Service]
-BL_Data[Data Services]
-end
-subgraph "Data Layer"
-DB_SQLite[SQLite Database]
-DB_ModelConfig[Model Configuration]
-DB_Predictions[Prediction Storage]
-end
-subgraph "External Integrations"
-EXT_Qwen[Qwen AI Models]
-EXT_FootballData[football-data.org]
-EXT_GoogleNews[Google News RSS]
-end
-UI_Dashboard --> API_Matches
-UI_Schedule --> API_Matches
-UI_Groups --> API_Groups
-UI_Tournament --> API_Tournament
-UI_MatchDetail --> API_Matches
-API_Matches --> BL_Prediction
-API_Teams --> BL_Data
-API_Groups --> BL_Data
-API_Tournament --> BL_Data
-API_Analytics --> BL_Calibration
-BL_Prediction --> BL_Agents
-BL_Agents --> EXT_Qwen
-BL_Data --> EXT_FootballData
-BL_Data --> EXT_GoogleNews
-BL_Prediction --> DB_SQLite
-BL_Agents --> DB_SQLite
-BL_Calibration --> DB_ModelConfig
-BL_Data --> DB_SQLite
-```
-
-**Diagram sources**
-- [backend/services/predictionEngine.js:1-1020](file://backend/services/predictionEngine.js#L1-L1020)
-- [backend/services/agents/orchestratorAgent.js:1-471](file://backend/services/agents/orchestratorAgent.js#L1-L471)
-- [backend/services/calibrationService.js:1-132](file://backend/services/calibrationService.js#L1-L132)
-
-## Detailed Component Analysis
-
-### Prediction Engine Implementation
-
-The prediction engine implements a sophisticated mathematical framework combining statistical rigor with machine learning insights:
-
-#### Dixon-Coles Poisson Model
-
-The core mathematical foundation uses the Dixon-Coles bivariate Poisson model with several key enhancements:
-
-- **Low-Score Correction**: Addresses over-prediction of 1-1 and under-prediction of 0-0/1-0/0-1 outcomes
-- **Dynamic Rating Updates**: Attack/defense ratings updated via regularized Poisson MLE after each match
-- **Home Advantage Modeling**: Incorporates host nation advantages and venue-specific factors
-- **Phase-Specific Scaling**: Different goal rates for group stage versus knockout rounds
-
-#### Signal Integration Architecture
-
-Multiple complementary signals are integrated through a sophisticated blending mechanism:
+The heart of the platform lies in its sophisticated prediction engine that employs a hybrid approach combining statistical rigor with AI-driven insights:
 
 ```mermaid
 flowchart TD
-Start([Prediction Request]) --> Backbone[Dixon-Coles Backbone]
-Backbone --> Signal1[H2H History]
-Backbone --> Signal2[Recent Form]
-Backbone --> Signal3[Pre-Match Intelligence]
-Backbone --> Signal4[Confirmed Lineup]
-Backbone --> Signal5[Rest Days Difference]
-Signal1 --> Weight1[Weight: 30%]
-Signal2 --> Weight2[Weight: 20%]
-Signal3 --> Weight3[Weight: 20%]
-Signal4 --> Weight4[Weight: 40%]
-Signal5 --> Weight5[Weight: 10%]
-Weight1 --> Blend[Log-Pool Blending]
-Weight2 --> Blend
-Weight3 --> Blend
-Weight4 --> Blend
-Weight5 --> Blend
-Blend --> Calibration[Temperature Scaling]
-Calibration --> Output[Final Probabilities]
-Output --> Insight[LLM Generated Insight]
-Insight --> End([Prediction Complete])
+START[Match Request] --> BACKBONE[Dixon-Coles Poisson Backbone]
+BACKBONE --> SIGNALS[Adjustment Signals]
+SIGNALS --> MULTI_AGENT{Multi-Agent Enabled?}
+MULTI_AGENT --> |Yes| ORCHESTRATOR[Multi-Agent Orchestrator]
+MULTI_AGENT --> |No| SINGLE_AGENT[Single-Agent Processing]
+ORCHESTRATOR --> AGENT1[Statistical Agent]
+ORCHESTRATOR --> AGENT2[H2H Agent]
+ORCHESTRATOR --> AGENT3[Form Agent]
+ORCHESTRATOR --> AGENT4[Intel Agent]
+ORCHESTRATOR --> AGENT5[Lineup Agent]
+AGENT1 --> CONFLICT{Conflict Detected?}
+AGENT2 --> CONFLICT
+AGENT3 --> CONFLICT
+AGENT4 --> CONFLICT
+AGENT5 --> CONFLICT
+CONFLICT --> |Yes| NEGOTIATION[Negotiation Round]
+CONFLICT --> |No| BLEND[Log-Pool Blending]
+NEGOTIATION --> BLEND
+SINGLE_AGENT --> BLEND
+BLEND --> CALIBRATION[Calibration & Temperature Scaling]
+CALIBRATION --> OUTPUT[Prediction Output]
+OUTPUT --> SAVE[Save to Database]
+SAVE --> END[Return Result]
 ```
 
 **Diagram sources**
-- [backend/services/predictionEngine.js:214-238](file://backend/services/predictionEngine.js#L214-L238)
+- [predictionEngine.js:691-800](file://backend/services/predictionEngine.js#L691-L800)
+- [orchestratorAgent.js:319-502](file://backend/services/agents/orchestratorAgent.js#L319-L502)
 
-#### Multi-Agent Negotiation Protocol
+### Multi-Agent AI System
 
-When the multi-agent system is enabled, the prediction process becomes highly collaborative:
+The platform implements a sophisticated five-agent system that operates in parallel to provide comprehensive match analysis:
 
-1. **Parallel Processing**: All five agents analyze the match simultaneously
-2. **Conflict Detection**: Probability differences ≥ 20% trigger negotiation
-3. **Rebuttal Rounds**: Conflicting agents challenge each other's reasoning
-4. **Weight Adjustment**: Winners receive 1.3× weight boost, losers 0.6× reduction
-5. **Final Blending**: Log-pool combination of all agent outputs
-
-### Multi-Agent System Design
-
-The multi-agent architecture consists of five specialized agents, each with distinct expertise:
-
-| Agent | Model | Specialization | Data Source |
-|-------|-------|----------------|-------------|
-| **Statistical Agent** | qwen-plus | Interprets Dixon-Coles backbone output | Mathematical reasoning |
-| **Form Agent** | qwen-turbo | Evaluates recent 10-match performance | football-data.org API |
-| **H2H Agent** | qwen-turbo | Analyzes historical head-to-head record | 47k match dataset |
-| **Intel Agent** | qwen-plus | Processes injuries, motivation, rotation | Google News RSS |
-| **Lineup Agent** | qwen-plus | Assesses confirmed starting XI strength | Lineup service |
-
-Each agent operates independently but collaboratively, with the orchestrator managing the negotiation process and final decision-making.
-
-### Frontend Application Architecture
-
-The frontend application provides a comprehensive user interface with responsive design and rich interactive features:
-
-#### Dashboard Component
-
-The dashboard serves as the primary entry point, showcasing:
-- Current tournament phase and progress
-- Upcoming matches with probability bars
-- Top tournament winner probabilities
-- Overall prediction accuracy metrics
-- Host nation highlights
-
-#### Schedule Management
-
-The schedule page offers:
-- Complete chronological listing of all 104 matches
-- Advanced filtering by stage, group, status, and team
-- Date-based grouping with collapsible sections
-- Mobile-responsive design with touch-friendly controls
-
-#### Group Standings System
-
-Real-time group standings with:
-- Standard football table format (position, played, won, drawn, lost, goal difference, points)
-- Visual qualification indicators for top 2 and third-place contention
-- What-if scenario calculator for remaining matches
-- Team profile integration with historical context
-
-#### Tournament Bracket Visualization
-
-Interactive bracket system featuring:
-- Horizontal layout showing progression from Round of 32 to Final
-- Color-coded stages with actual vs predicted indicators
-- Winner probability displays for each match
-- Road to Final visualization with Monte Carlo simulations
+| Agent Type | Model | Primary Function | Key Capabilities |
+|------------|-------|------------------|------------------|
+| **Statistical Agent** | qwen-plus | Dixon-Coles model interpretation | λ values, ELO ratings, α/β attack/defense analysis |
+| **H2H Agent** | qwen-turbo | Head-to-head history analysis | 47k match dataset, competition weighting |
+| **Form Agent** | qwen-turbo | Recent performance evaluation | Last 10 matches with competition weighting |
+| **Intel Agent** | qwen-plus | Pre-match intelligence parsing | Injuries, suspensions, motivation, squad rotation |
+| **Lineup Agent** | qwen-plus | Starting XI analysis | Confirmed lineup strength, formation matchups |
 
 **Section sources**
-- [frontend/src/pages/Dashboard.jsx:137-706](file://frontend/src/pages/Dashboard.jsx#L137-L706)
-- [frontend/src/pages/Schedule.jsx:135-494](file://frontend/src/pages/Schedule.jsx#L135-L494)
-- [frontend/src/pages/Groups.jsx:11-160](file://frontend/src/pages/Groups.jsx#L11-L160)
-- [frontend/src/pages/Tournament.jsx:376-444](file://frontend/src/pages/Tournament.jsx#L376-L444)
-
-## Dependency Analysis
-
-The system maintains clean dependency relationships with minimal coupling between components:
-
-```mermaid
-graph LR
-subgraph "Frontend Dependencies"
-REACT[React 18]
-AXIOS[Axios]
-ROUTER[React Router]
-CHARTS[Recharts]
-FRAMER[Framer Motion]
-end
-subgraph "Backend Dependencies"
-EXPRESS[Express]
-SQLITE[SQLite]
-AXIOS[axios]
-CORS[CORS]
-DOTENV[dotenv]
-NODECRON[node-cron]
-end
-subgraph "AI Dependencies"
-DASHSCOPE[DashScope SDK]
-QWEN_MODELS[qwen-max/turbo/plus]
-end
-subgraph "Development Tools"
-ESLINT[ESLint]
-PRETTIER[Prettier]
-VITE[Vite]
-TEST[Vitest]
-end
-REACT --> AXIOS
-REACT --> ROUTER
-REACT --> CHARTS
-REACT --> FRAMER
-EXPRESS --> SQLITE
-EXPRESS --> AXIOS
-EXPRESS --> CORS
-EXPRESS --> DOTENV
-EXPRESS --> NODECRON
-AXIOS --> DASHSCOPE
-DASHSCOPE --> QWEN_MODELS
-```
-
-**Diagram sources**
-- [backend/package.json:14-31](file://backend/package.json#L14-L31)
-- [frontend/package.json:38-71](file://frontend/package.json#L38-L71)
-
-### External Data Sources
-
-The application integrates with multiple external services for comprehensive data coverage:
-
-- **football-data.org**: Live scores, team statistics, and fixture data (optional)
-- **Google News RSS**: Pre-match intelligence including injuries, suspensions, and motivation
-- **Alibaba Cloud DashScope**: Qwen model access for AI-powered analysis
+- [README.md:18-113](file://README.md#L18-L113)
+- [SPEC.md:125-177](file://specs/SPEC.md#L125-L177)
 
 ### Database Schema
 
-The SQLite database maintains organized data structures for efficient querying and analysis:
+The SQLite-based data storage system maintains comprehensive tournament data with optimized queries for real-time performance:
 
-- **Teams Table**: 48 participating teams with FIFA rankings and ELO ratings
-- **Matches Table**: Complete fixture schedule with status tracking
-- **Predictions Table**: Historical predictions with confidence metrics
-- **Model Configuration**: Calibration parameters and system settings
+```mermaid
+erDiagram
+TEAMS {
+text id PK
+text name
+text flag
+text group_code
+integer fifa_rank
+real elo
+real avg_scored
+real avg_conceded
+integer gs_played
+integer gs_pts
+}
+MATCHES {
+text id PK
+text stage
+text group_code
+text home_team FK
+text away_team FK
+text scheduled_date
+text status
+integer home_score
+integer away_score
+text winner
+}
+PREDICTIONS {
+integer id PK
+text match_id FK
+datetime generated_at
+real prob_home
+real prob_draw
+real prob_away
+text most_likely_score
+text confidence
+text methodology
+text insight
+}
+ELO_HISTORY {
+integer id PK
+text team_id FK
+text match_id FK
+real elo_before
+real elo_after
+text result
+text stage
+datetime recorded_at
+}
+TEAMS ||--o{ MATCHES : participates_in
+MATCHES ||--o{ PREDICTIONS : has_predictions
+TEAMS ||--o{ ELO_HISTORY : appears_in
+MATCHES ||--o{ ELO_HISTORY : affects_ratings
+```
+
+**Diagram sources**
+- [db.js:23-252](file://backend/database/db.js#L23-L252)
 
 **Section sources**
-- [backend/package.json:14-31](file://backend/package.json#L14-L31)
-- [frontend/package.json:38-71](file://frontend/package.json#L38-L71)
-- [backend/data/teams.js:1-234](file://backend/data/teams.js#L1-L234)
+- [db.js:23-252](file://backend/database/db.js#L23-L252)
+
+## Architecture Overview
+
+The platform implements a microservice-like architecture within a single codebase, separating concerns while maintaining simplicity:
+
+```mermaid
+graph LR
+subgraph "Presentation Layer"
+WEB[Web Browser]
+MOBILE[Mobile App]
+end
+subgraph "API Gateway"
+ROUTER[Express Router]
+AUTH[CORS Middleware]
+VALIDATION[Request Validation]
+end
+subgraph "Business Logic"
+PREDICTION[Prediction Engine]
+ANALYTICS[Analytics Service]
+DATA[Data Service]
+BRACKET[Bracket Service]
+end
+subgraph "Intelligence Layer"
+ORCHESTRATOR[Multi-Agent Orchestrator]
+AGENTS[Specialist Agents]
+QWEN[Qwen AI Models]
+end
+subgraph "Data Layer"
+SQLITE[SQLite Database]
+CACHE[Intel Cache]
+CONFIG[Model Config]
+end
+WEB --> ROUTER
+MOBILE --> ROUTER
+ROUTER --> AUTH
+AUTH --> VALIDATION
+VALIDATION --> PREDICTION
+PREDICTION --> ORCHESTRATOR
+ORCHESTRATOR --> AGENTS
+AGENTS --> QWEN
+QWEN --> SQLITE
+PREDICTION --> SQLITE
+ANALYTICS --> SQLITE
+BRACKET --> SQLITE
+DATA --> SQLITE
+DATA --> CACHE
+DATA --> CONFIG
+```
+
+**Diagram sources**
+- [server.js:18-22](file://backend/server.js#L18-22)
+- [predictionEngine.js:1-800](file://backend/services/predictionEngine.js#L1-L800)
+
+### Technology Stack
+
+The platform leverages a modern, cloud-ready technology stack:
+
+**Backend Technologies:**
+- **Node.js 18+** with Express framework for REST API development
+- **SQLite (WAL mode)** for high-performance relational data storage
+- **Alibaba Cloud Qwen** for advanced AI capabilities (qwen-max, qwen-plus, qwen-turbo)
+- **node-sqlite3-wasm** for efficient database operations
+- **node-cron** for automated scheduling and maintenance tasks
+
+**Frontend Technologies:**
+- **React 18** with functional components and hooks for modern UI development
+- **Vite** for fast build tooling and development experience
+- **Tailwind CSS** for utility-first styling and responsive design
+- **Framer Motion** for smooth animations and transitions
+- **Axios** for HTTP client operations
+
+**Deployment & DevOps:**
+- **Docker** for containerization and consistent environments
+- **Alibaba Cloud ECS** for production hosting
+- **Automated deployment scripts** for streamlined CI/CD
+
+**Section sources**
+- [README.md:106-113](file://README.md#L106-L113)
+- [package.json:14-31](file://backend/package.json#L14-L31)
+- [package.json:38-71](file://frontend/package.json#L38-L71)
+
+## Detailed Component Analysis
+
+### Frontend Application Architecture
+
+The React-based frontend implements a comprehensive routing system with intelligent caching and offline support:
+
+```mermaid
+classDiagram
+class App {
++routes : Array
++themeProvider : ThemeProvider
++languageProvider : LanguageProvider
++render() JSX.Element
+}
+class Dashboard {
++upcomingMatches : Array
++winnerProbabilities : Array
++accuracyStats : Object
++loadData() Promise
+}
+class Groups {
++groupsData : Object
++activeGroup : String
++loadGroups() Promise
+}
+class Tournament {
++roadToFinal : Array
++winnerProbabilities : Array
++activeTab : String
++loadData() Promise
+}
+class API_Client {
++baseUrl : String
++getTeams() Promise
++getMatches() Promise
++getPredictions() Promise
++submitResult() Promise
+}
+App --> Dashboard : renders
+App --> Groups : renders
+App --> Tournament : renders
+Dashboard --> API_Client : uses
+Groups --> API_Client : uses
+Tournament --> API_Client : uses
+```
+
+**Diagram sources**
+- [App.jsx:247-283](file://frontend/src/App.jsx#L247-L283)
+- [Dashboard.jsx:137-706](file://frontend/src/pages/Dashboard.jsx#L137-L706)
+- [Groups.jsx:11-160](file://frontend/src/pages/Groups.jsx#L11-L160)
+- [Tournament.jsx:376-444](file://frontend/src/pages/Tournament.jsx#L376-L444)
+
+### Key User Interface Components
+
+The platform provides six primary pages, each serving distinct user needs:
+
+#### Dashboard Component
+The homepage serves as the central hub, displaying:
+- Current tournament phase and countdown timers
+- Upcoming matches with predictive insights
+- Top tournament favorites with probability rankings
+- Real-time accuracy metrics and performance indicators
+
+#### Groups Component
+Comprehensive group stage coverage featuring:
+- Interactive standings tables with qualification indicators
+- Match cards with integrated predictions
+- Team profile navigation and historical context
+- What-if scenario calculations for qualification possibilities
+
+#### Tournament Component
+Advanced knockout bracket visualization:
+- Horizontal bracket layout with SVG connectors
+- Predicted and actual match outcomes
+- Winner probability rankings and Monte Carlo simulations
+- Road-to-Final progression tracking
+
+#### Additional Pages
+- **Schedule**: Complete chronological match listings with filtering
+- **Match Detail**: Deep analytical breakdown with multi-agent dialogue
+- **Predictions**: Comprehensive historical accuracy tracking
+- **Team Detail**: Per-team statistics and ELO trajectory analysis
+
+**Section sources**
+- [Dashboard.jsx:137-706](file://frontend/src/pages/Dashboard.jsx#L137-L706)
+- [Groups.jsx:11-160](file://frontend/src/pages/Groups.jsx#L11-L160)
+- [Tournament.jsx:376-444](file://frontend/src/pages/Tournament.jsx#L376-L444)
+- [SPEC.md:31-123](file://specs/SPEC.md#L31-L123)
+
+### Backend API Endpoints
+
+The RESTful API provides comprehensive access to all platform functionality:
+
+```mermaid
+sequenceDiagram
+participant Client as "Client Application"
+participant API as "Express Server"
+participant Engine as "Prediction Engine"
+participant DB as "SQLite Database"
+participant Qwen as "Qwen AI"
+Client->>API : GET /api/matches/ : id/prediction
+API->>Engine : predict(matchId, refresh?)
+Engine->>DB : Load match & team data
+Engine->>Engine : Compute base probabilities
+Engine->>Qwen : Multi-agent analysis (if enabled)
+Qwen-->>Engine : Agent outputs & insights
+Engine->>Engine : Conflict detection & negotiation
+Engine->>Engine : Log-pool blending & calibration
+Engine->>DB : Save prediction result
+Engine-->>API : Prediction data
+API-->>Client : JSON response
+Note over Client,Qwen : Multi-agent system coordinates 5 specialists
+```
+
+**Diagram sources**
+- [server.js:325-341](file://backend/server.js#L325-L341)
+- [predictionEngine.js:691-800](file://backend/services/predictionEngine.js#L691-L800)
+- [orchestratorAgent.js:319-502](file://backend/services/agents/orchestratorAgent.js#L319-L502)
+
+**Section sources**
+- [server.js:24-582](file://backend/server.js#L24-L582)
+- [client.js:1-50](file://frontend/src/api/client.js#L1-L50)
+
+### Multi-Agent System Implementation
+
+The multi-agent architecture represents a sophisticated approach to sports analytics:
+
+```mermaid
+flowchart TD
+INPUT[Match Context] --> PREFETCH[Parallel Data Fetch]
+PREFETCH --> STAT[Statistical Analysis]
+PREFETCH --> H2H[H2H Analysis]
+PREFETCH --> FORM[Form Analysis]
+PREFETCH --> INTEL[Intel Analysis]
+PREFETCH --> LINEUP[Lineup Analysis]
+STAT --> ROUND1[Round 1 Predictions]
+H2H --> ROUND1
+FORM --> ROUND1
+INTEL --> ROUND1
+LINEUP --> ROUND1
+ROUND1 --> CONFLICT{Conflicts Detected?}
+CONFLICT --> |No| BLEND[Log-Pool Blending]
+CONFLICT --> |Yes| NEGOTIATION[Negotiation Round]
+NEGOTIATION --> WEIGHT[Weight Adjustment]
+WEIGHT --> BLEND
+BLEND --> CALIBRATE[Calibration & Temperature Scaling]
+CALIBRATE --> INSIGHT[LLM Insight Generation]
+INSIGHT --> SAVE[Save Session & Results]
+SAVE --> OUTPUT[Final Prediction]
+```
+
+**Diagram sources**
+- [orchestratorAgent.js:331-469](file://backend/services/agents/orchestratorAgent.js#L331-L469)
+
+The system implements sophisticated conflict resolution mechanisms where agents with probability differences exceeding 20% engage in negotiated debates, with the most resilient argument winning and receiving weight adjustments.
+
+**Section sources**
+- [README.md:72-113](file://README.md#L72-L113)
+- [SPEC.md:148-177](file://specs/SPEC.md#L148-L177)
+
+## Dependency Analysis
+
+The platform maintains clean architectural boundaries with minimal coupling between components:
+
+```mermaid
+graph TD
+subgraph "External Dependencies"
+AXIOS[Axios HTTP Client]
+REACT[React Runtime]
+EXPRESS[Express Framework]
+SQLITE[SQLite Driver]
+QWEN[Qwen SDK]
+end
+subgraph "Internal Modules"
+SERVER[Server.js]
+ENGINE[Prediction Engine]
+SERVICES[Business Services]
+AGENTS[Agent System]
+DATABASE[Database Layer]
+FRONTEND[React Components]
+end
+AXIOS --> SERVER
+REACT --> FRONTEND
+EXPRESS --> SERVER
+SQLITE --> DATABASE
+QWEN --> AGENTS
+SERVER --> SERVICES
+SERVICES --> ENGINE
+ENGINE --> AGENTS
+ENGINE --> DATABASE
+SERVICES --> DATABASE
+FRONTEND --> SERVER
+```
+
+**Diagram sources**
+- [package.json:14-31](file://backend/package.json#L14-L31)
+- [package.json:38-71](file://frontend/package.json#L38-L71)
+
+### Key Dependencies and Version Management
+
+The project maintains strict version control for all dependencies:
+
+**Backend Dependencies:**
+- **express**: ^4.19.2 - Core web framework
+- **axios**: ^1.7.2 - HTTP client for external APIs
+- **node-sqlite3-wasm**: ^0.8.57 - Efficient database operations
+- **node-cron**: ^4.2.1 - Scheduled task automation
+- **cors**: ^2.8.5 - Cross-origin resource sharing
+
+**Frontend Dependencies:**
+- **react**: ^18.3.1 - Core UI library
+- **react-router-dom**: ^6.24.1 - Client-side routing
+- **axios**: ^1.7.2 - HTTP client for API communication
+- **framer-motion**: ^12.40.0 - Animation library
+- **tailwindcss**: ^3.4.6 - Utility-first CSS framework
+
+**Development Dependencies:**
+- **eslint**: ^9.39.4 - Code quality and linting
+- **prettier**: ^3.8.3 - Code formatting
+- **vitest**: ^3.2.4 - Testing framework
+
+**Section sources**
+- [package.json:14-31](file://backend/package.json#L14-L31)
+- [package.json:23-71](file://frontend/package.json#L23-L71)
 
 ## Performance Considerations
 
-The application is designed with several performance optimization strategies:
-
-### Prediction Caching Strategy
-
-- **Cache Validation**: Predictions are validated against match status and cached timestamps
-- **Selective Refresh**: Only active tournament stage predictions are regenerated nightly
-- **Historical Preservation**: Prediction history is maintained for analysis and comparison
-
-### Multi-Agent Optimization
-
-- **Parallel Processing**: Agents operate concurrently to minimize response times
-- **Conditional Activation**: Agents only process when relevant data is available
-- **Conflict Minimization**: Weight adjustment system reduces negotiation frequency
-
-### Frontend Performance
-
-- **Code Splitting**: Route-based lazy loading for optimal bundle sizes
-- **Responsive Design**: Mobile-first approach with progressive enhancement
-- **State Management**: Efficient context providers with selective re-renders
+The platform implements several optimization strategies to ensure responsive performance:
 
 ### Database Optimization
+- **WAL Mode**: Write-Ahead Logging for improved concurrency
+- **Connection Pooling**: Efficient database resource management
+- **Indexed Queries**: Strategic indexing on frequently queried columns
+- **Batch Operations**: Optimized bulk data processing
 
-- **WAL Mode**: SQLite Write-Ahead Logging for improved concurrency
-- **Indexed Queries**: Strategic indexing for frequently accessed data
-- **Connection Pooling**: Efficient database connection management
+### Caching Strategies
+- **Prediction Caching**: Prevents redundant AI computations
+- **Intel Cache**: Stores parsed web intelligence data
+- **Static Assets**: CDN-ready optimization for images and resources
+- **API Response Caching**: Reduces server load for repeated requests
+
+### AI Model Optimization
+- **Selective Agent Activation**: Only activates relevant agents per match
+- **Conflict Detection**: Minimizes negotiation rounds when possible
+- **Temperature Scaling**: Adjusts model confidence for better calibration
+- **Model Weight Tuning**: Dynamic adjustment of signal weights
+
+### Frontend Performance
+- **Code Splitting**: Route-based lazy loading
+- **Component Memoization**: Prevents unnecessary re-renders
+- **Responsive Design**: Mobile-first optimization
+- **SVG Graphics**: Lightweight vector graphics for icons and decorations
 
 ## Troubleshooting Guide
 
 ### Common Issues and Solutions
 
-#### AI Model Access Problems
+**API Connectivity Problems**
+- Verify CORS configuration matches frontend origin
+- Check environment variable settings for API keys
+- Ensure database initialization completes successfully
+- Monitor network connectivity to external APIs
 
-**Issue**: Qwen model calls failing or returning template responses
-**Solution**: Verify DASHSCOPE_API_KEY environment variable is properly configured
+**Prediction Engine Failures**
+- Validate Qwen API key configuration
+- Check model availability and quota limits
+- Review agent session logs for conflict resolution issues
+- Monitor database connection timeouts
 
-#### Data Integration Failures
+**Frontend Rendering Issues**
+- Clear browser cache and reload application
+- Verify React DevTools compatibility
+- Check for JavaScript errors in console
+- Ensure proper hydration on client-side
 
-**Issue**: Missing live scores or form data
-**Solution**: Check FOOTBALL_DATA_API_KEY configuration and API rate limits
+**Database Corruption Prevention**
+- Monitor WAL file growth and checkpoint intervals
+- Regular backup schedules for critical data
+- Connection timeout configurations
+- Foreign key constraint validation
 
-#### Prediction Accuracy Concerns
+### Monitoring and Debugging
 
-**Issue**: Predictions not reflecting recent results
-**Solution**: Monitor calibration service refitting and model configuration updates
+The platform includes comprehensive logging and monitoring capabilities:
 
-#### Frontend Loading Issues
-
-**Issue**: Slow page loads or missing data
-**Solution**: Verify API endpoint accessibility and network connectivity
-
-### Debugging Tools
-
-The application includes comprehensive logging and monitoring capabilities:
-
-- **Console Logging**: Detailed agent session logs and prediction traces
-- **Error Boundaries**: Frontend error handling with user-friendly messaging
-- **Health Checks**: Automated system health monitoring and alerting
+- **Server Logs**: Detailed request/response logging
+- **Agent Sessions**: Complete audit trail of AI interactions
+- **Performance Metrics**: Response time and resource utilization
+- **Error Tracking**: Centralized error reporting and aggregation
 
 **Section sources**
-- [README.md:139-151](file://README.md#L139-L151)
+- [server.js:585-675](file://backend/server.js#L585-L675)
+- [db.js:10-21](file://backend/database/db.js#L10-L21)
 
 ## Conclusion
 
-WC26-Qwen-Qoder represents a sophisticated fusion of advanced mathematics, artificial intelligence, and user-centric design. The application successfully combines the rigorous statistical foundation of the Dixon-Coles Poisson model with the interpretive power of Alibaba Cloud's Qwen multi-agent AI system to deliver accurate, explainable sports predictions.
+The World Cup 2026 Prediction App represents a sophisticated fusion of sports analytics and artificial intelligence, delivering an unparalleled user experience for football enthusiasts worldwide. Through its innovative multi-agent AI system, comprehensive statistical modeling, and elegant user interface, the platform successfully bridges the gap between complex data analysis and accessible sports entertainment.
 
-Key achievements include:
-- **Comprehensive Coverage**: Complete 48-team, 104-match tournament analysis
-- **Advanced AI Integration**: Sophisticated multi-agent system with negotiation protocols
-- **Rich User Experience**: Intuitive interfaces for all major user workflows
-- **Technical Excellence**: Robust architecture with performance optimizations
-- **Open Source Accessibility**: Transparent development process and community contribution
+The project's modular architecture ensures maintainability and scalability, while its bilingual interface and responsive design accommodate users across different regions and devices. The combination of real-time predictions, historical accuracy tracking, and interactive tournament visualization creates a comprehensive analytics solution that serves both casual fans and serious analysts.
 
-The platform serves as an exemplary demonstration of how modern AI technologies can enhance traditional sports analytics, providing fans with deeper insights into the beautiful game while maintaining accessibility and usability for audiences worldwide.
+By leveraging Alibaba Cloud's Qwen AI models and implementing robust performance optimizations, the platform demonstrates the practical application of advanced AI technologies in sports analytics. The educational value extends beyond simple predictions, offering users insights into statistical modeling, machine learning applications, and the evolving landscape of AI-powered sports analysis.
+
+This project stands as a testament to the potential of combining traditional sports journalism with cutting-edge technology, providing a blueprint for future innovations in sports analytics platforms.

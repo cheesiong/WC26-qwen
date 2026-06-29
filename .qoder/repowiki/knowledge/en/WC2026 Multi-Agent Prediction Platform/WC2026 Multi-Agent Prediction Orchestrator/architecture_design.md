@@ -1,3 +1,0 @@
-- Central `orchestratorAgent.js` drives a two-round workflow: parallel domain data fetching, simultaneous specialist agent dispatch via `AgentSession`, and conditional negotiation if probability deltas exceed thresholds.
-- Enforces isolation through a shared `agentFramework` contract where each child implements `fetchDomainData` and `buildPrompt`, returning standardized probability distributions for log-pool blending.
-- Wires children at startup by dynamically building an active agent task list based on data availability (e.g., skipping H2H or Lineup agents when data is sparse), ensuring resilient execution despite partial data failures.

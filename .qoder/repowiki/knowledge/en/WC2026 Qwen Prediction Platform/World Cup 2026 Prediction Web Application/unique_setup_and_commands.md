@@ -1,0 +1,3 @@
+- Uses `react-snap` for static pre-rendering of key routes (e.g., /, /predictions) to improve SEO and initial paint.
+- Dockerized deployment with Nginx includes an `entrypoint.sh` script that dynamically configures SSL certificates via Certbot based on environment variables.
+- Development server runs on port 6001 with a proxy to the backend at `localhost:6173`.

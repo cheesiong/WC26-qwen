@@ -1,3 +1,0 @@
-- Models expose a consistent three-method interface: `init(teamIds)` for state setup, `predict(home, away, isNeutral)` for probability generation, and `update(...)` for online learning.
-- Historical data loading is decoupled from model logic via `backtestData.js`, which caches external CSVs locally to avoid redundant network requests during repeated backtests.
-- Database maintenance scripts typically wrap write operations in explicit transactions or use prepared statements for batch updates to ensure data integrity during re-processing.

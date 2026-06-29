@@ -1,0 +1,5 @@
+- Built with Vite and React 18, using `react-router-dom` for client-side routing across pages like Dashboard, Groups, and MatchDetail.
+- State management relies on React Context API for global themes (`ThemeContext`) and internationalization (`LanguageContext`), avoiding external state libraries.
+- API communication is centralized in `src/api/client.js` using Axios, with environment-variable-driven base URLs.
+- UI styling leverages Tailwind CSS with custom configuration, while `react-helmet-async` manages SEO metadata.
+- Entry point `main.jsx` supports hydration for static pre-rendering via `react-snap`, enhancing initial load performance.

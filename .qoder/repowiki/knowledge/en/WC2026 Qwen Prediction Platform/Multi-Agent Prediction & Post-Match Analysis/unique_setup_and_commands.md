@@ -1,0 +1,2 @@
+- Requires `DASHSCOPE_API_KEY` in `.env` for LLM access.
+- Backtesting available via `node scripts/backtest.js [baseline|v2|both] [--since=YEAR]`.

@@ -1,0 +1,1 @@
+Docker Compose orchestrates the multi-service architecture, while Bash scripts manage cross-module environment provisioning and synchronized startup workflows.

@@ -3,18 +3,14 @@ module_path: build_system
 title: Monorepo Build & Deployment with Docker Compose and ECS Automation
 scope: []
 source_files:
-    - backend/package.json
-    - frontend/package.json
-    - backend/Dockerfile
-    - frontend/Dockerfile
     - docker-compose.yml
     - deploy.sh
     - setup-ecs.sh
     - start.sh
+    - backend/Dockerfile
+    - frontend/Dockerfile
     - frontend/entrypoint.sh
-    - frontend/vite.config.js
-    - frontend/vercel.json
-    - backend/eslint.config.mjs
-    - frontend/eslint.config.mjs
+    - backend/package.json
+    - frontend/package.json
 depends_on: []
 related_to: []

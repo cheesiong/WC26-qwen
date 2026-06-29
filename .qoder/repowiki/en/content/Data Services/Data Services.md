@@ -3,14 +3,16 @@
 <cite>
 **Referenced Files in This Document**
 - [dataService.js](file://backend/services/dataService.js)
+- [h2hService.js](file://backend/services/h2hService.js)
 - [lineupService.js](file://backend/services/lineupService.js)
 - [suspensionService.js](file://backend/services/suspensionService.js)
-- [h2hService.js](file://backend/services/h2hService.js)
-- [oddsService.js](file://backend/services/oddsService.js)
 - [predictionEngine.js](file://backend/services/predictionEngine.js)
 - [analysisService.js](file://backend/services/analysisService.js)
 - [db.js](file://backend/database/db.js)
+- [client.js](file://frontend/src/api/client.js)
+- [server.js](file://backend/server.js)
 - [qwenClient.js](file://backend/services/qwenClient.js)
+- [oddsService.js](file://backend/services/oddsService.js)
 </cite>
 
 ## Table of Contents
@@ -23,474 +25,422 @@
 7. [Performance Considerations](#performance-considerations)
 8. [Troubleshooting Guide](#troubleshooting-guide)
 9. [Conclusion](#conclusion)
+10. [Appendices](#appendices)
 
 ## Introduction
-This document describes the data services layer responsible for sourcing, transforming, validating, and serving data to the prediction engine and downstream consumers. It covers:
-- External API integrations (football-data.org, The Odds API)
-- Real-time live result synchronization
-- Web scraping for injury and transfer news
-- Lineup service for confirmed starting XI and lineup impact
-- Suspension tracking service
-- Head-to-head history service backed by a large historical dataset
-- Data validation, error handling, retry mechanisms, and fallback strategies
-- Data transformation pipelines and enrichment processes
-- Integration with the prediction engine
-- Rate limiting, API key management, and data freshness policies
+This document describes the data services layer responsible for external data integration and processing in the World Cup 2026 prediction platform. It covers:
+- External data sources: football-data.org API integration, web scraping for injuries and lineups, and real-time live result synchronization
+- Historical head-to-head analysis using a 47k-match dataset
+- Lineup tracking and player availability modeling
+- Suspension tracking for yellow/red cards
+- Data processing pipeline: validation, transformation, caching, error handling
+- Rate limiting, retry mechanisms, and fallback strategies
+- Data freshness policies, update frequencies, and consistency guarantees
+- Integration patterns with the prediction engine and user interface
 
 ## Project Structure
-The data services layer is organized by functional domains:
-- External data ingestion and caching: dataService.js
-- Lineup and lineup impact: lineupService.js
-- Suspension tracking: suspensionService.js
-- Historical head-to-head: h2hService.js
-- Odds integration: oddsService.js
-- Prediction engine orchestration: predictionEngine.js
-- Post-match analysis and learning: analysisService.js
-- Database schema and caching tables: db.js
-- LLM client for parsing and insights: qwenClient.js
+The data services are implemented as modular Node.js services backed by a SQLite database. The backend exposes REST endpoints via Express and orchestrates data collection, processing, and caching. The frontend consumes these endpoints to render predictions and analytics.
 
 ```mermaid
 graph TB
-subgraph "Data Services"
+subgraph "Backend"
 DS["dataService.js"]
+H2HS["h2hService.js"]
 LS["lineupService.js"]
 SS["suspensionService.js"]
-H2H["h2hService.js"]
-OD["oddsService.js"]
 PE["predictionEngine.js"]
 AS["analysisService.js"]
-QC["qwenClient.js"]
+DB["db.js"]
+QW["qwenClient.js"]
+OD["oddsService.js"]
+SVR["server.js"]
 end
-subgraph "Storage"
-DB["db.js (SQLite)"]
+subgraph "External"
+API["football-data.org API"]
+WEB["Web Scrapers<br/>ESPN, BBC, Google News"]
+LLM["Qwen LLM"]
 end
-DS --> DB
+subgraph "Frontend"
+FE["client.js"]
+end
+FE --> SVR
+SVR --> DS
+SVR --> H2HS
+SVR --> LS
+SVR --> SS
+SVR --> PE
+SVR --> AS
+SVR --> OD
+DS --> API
+DS --> WEB
+DS --> QW
+H2HS --> DB
 LS --> DB
 SS --> DB
-H2H --> DB
-OD --> DB
-PE --> DB
-AS --> DB
 PE --> DS
+PE --> H2HS
 PE --> LS
-PE --> H2H
-DS --> QC
+AS --> PE
+AS --> DB
+QW --> LLM
 ```
 
 **Diagram sources**
-- [dataService.js:1-583](file://backend/services/dataService.js#L1-L583)
+- [dataService.js:1-602](file://backend/services/dataService.js#L1-L602)
+- [h2hService.js:1-315](file://backend/services/h2hService.js#L1-L315)
 - [lineupService.js:1-425](file://backend/services/lineupService.js#L1-L425)
 - [suspensionService.js:1-152](file://backend/services/suspensionService.js#L1-L152)
-- [h2hService.js:1-315](file://backend/services/h2hService.js#L1-L315)
-- [oddsService.js:1-242](file://backend/services/oddsService.js#L1-L242)
-- [predictionEngine.js:1-1020](file://backend/services/predictionEngine.js#L1-L1020)
+- [predictionEngine.js:1-1046](file://backend/services/predictionEngine.js#L1-L1046)
 - [analysisService.js:1-422](file://backend/services/analysisService.js#L1-L422)
 - [db.js:1-252](file://backend/database/db.js#L1-L252)
-- [qwenClient.js:1-123](file://backend/services/qwenClient.js#L1-L123)
+- [qwenClient.js:86-122](file://backend/services/qwenClient.js#L86-L122)
+- [oddsService.js:1-156](file://backend/services/oddsService.js#L1-L156)
+- [server.js:1-41](file://backend/server.js#L1-L41)
 
 **Section sources**
-- [dataService.js:1-583](file://backend/services/dataService.js#L1-L583)
+- [dataService.js:1-602](file://backend/services/dataService.js#L1-L602)
+- [h2hService.js:1-315](file://backend/services/h2hService.js#L1-L315)
 - [lineupService.js:1-425](file://backend/services/lineupService.js#L1-L425)
 - [suspensionService.js:1-152](file://backend/services/suspensionService.js#L1-L152)
-- [h2hService.js:1-315](file://backend/services/h2hService.js#L1-L315)
-- [oddsService.js:1-242](file://backend/services/oddsService.js#L1-L242)
-- [predictionEngine.js:1-1020](file://backend/services/predictionEngine.js#L1-L1020)
+- [predictionEngine.js:1-1046](file://backend/services/predictionEngine.js#L1-L1046)
 - [analysisService.js:1-422](file://backend/services/analysisService.js#L1-L422)
 - [db.js:1-252](file://backend/database/db.js#L1-L252)
-- [qwenClient.js:1-123](file://backend/services/qwenClient.js#L1-L123)
+- [qwenClient.js:86-122](file://backend/services/qwenClient.js#L86-L122)
+- [oddsService.js:1-156](file://backend/services/oddsService.js#L1-L156)
+- [server.js:1-41](file://backend/server.js#L1-L41)
 
 ## Core Components
-- External API integration and caching:
-  - football-data.org API client with timeouts and team ID mapping
-  - Web scraping for team form, injuries, and news via Google News RSS and DuckDuckGo-friendly search
-  - Structured LLM parsing with anti-hallucination verification
-- Real-time live result synchronization:
-  - In-progress and finished match sync with score normalization and reversal handling
-- Lineup service:
-  - Confirmed starting XI retrieval from multiple sources, strength scoring, and impact conversion
-- Suspension tracking:
-  - Yellow/red card accumulation, ban enforcement, and match-specific suspension queries
-- Head-to-head history:
-  - Large-scale historical CSV seeding and weighted historical records
-- Odds service:
-  - Integration with The Odds API and mock odds fallback
-- Prediction engine integration:
-  - Consumption of form, intel, H2H, lineup, and rest-day signals
-- Database schema and caching:
-  - Centralized caching tables and model configuration storage
+- dataService: Integrates football-data.org API and web scraping for team form, injuries, news, and live result synchronization. Implements caching and fallback strategies.
+- h2hService: Loads and maintains a 47k-match historical dataset, computes competition-weighted head-to-head records, and converts them to probabilities.
+- lineupService: Fetches confirmed starting XIs from API or web scrapers, computes lineup strength, detects key absences, and translates lineup impact into probability adjustments.
+- suspensionService: Tracks yellow/red card accumulations and suspensions across the tournament, with stage-aware thresholds and watch lists.
+- predictionEngine: Orchestrates the prediction pipeline, blending backbone Poisson model with signals from dataService, h2hService, and lineupService.
+- analysisService: Handles post-match analysis, updating standings, ELO/ratings, and model performance metrics.
+- qwenClient: Provides robust LLM invocation with retries and timeouts for data parsing tasks.
+- oddsService: Fetches betting odds from The Odds API with caching and quota preservation.
 
 **Section sources**
-- [dataService.js:18-583](file://backend/services/dataService.js#L18-L583)
+- [dataService.js:1-602](file://backend/services/dataService.js#L1-L602)
+- [h2hService.js:1-315](file://backend/services/h2hService.js#L1-L315)
 - [lineupService.js:1-425](file://backend/services/lineupService.js#L1-L425)
 - [suspensionService.js:1-152](file://backend/services/suspensionService.js#L1-L152)
-- [h2hService.js:1-315](file://backend/services/h2hService.js#L1-L315)
-- [oddsService.js:1-242](file://backend/services/oddsService.js#L1-L242)
-- [predictionEngine.js:1-1020](file://backend/services/predictionEngine.js#L1-L1020)
-- [db.js:147-252](file://backend/database/db.js#L147-L252)
+- [predictionEngine.js:1-1046](file://backend/services/predictionEngine.js#L1-L1046)
+- [analysisService.js:1-422](file://backend/services/analysisService.js#L1-L422)
+- [qwenClient.js:86-122](file://backend/services/qwenClient.js#L86-L122)
+- [oddsService.js:1-156](file://backend/services/oddsService.js#L1-L156)
 
 ## Architecture Overview
-The data services layer integrates external sources, caches data locally, and supplies enriched inputs to the prediction engine. The prediction engine orchestrates multiple signals (form, intel, H2H, lineup, rest days) and blends them using a log-pool mechanism.
+The data services layer follows a layered architecture:
+- External integrations: API clients and scrapers feed raw data into the system
+- Transformation: Services parse, validate, and enrich data
+- Caching: SQLite-backed cache stores processed data with TTL controls
+- Orchestration: predictionEngine composes signals and generates predictions
+- Persistence: database persists predictions, model performance, and metadata
+- Frontend integration: client.js calls backend endpoints to render UI
 
 ```mermaid
 sequenceDiagram
-participant Cron as "Scheduler"
-participant PE as "predictionEngine.js"
+participant FE as "Frontend"
+participant API as "Express server.js"
 participant DS as "dataService.js"
-participant LS as "lineupService.js"
 participant H2H as "h2hService.js"
-participant QC as "qwenClient.js"
+participant LIN as "lineupService.js"
+participant PE as "predictionEngine.js"
 participant DB as "db.js"
-Cron->>PE : predict(matchId)
-PE->>DS : fetchTeamForm(home/away)
-DS->>DB : cache lookup (form)
-alt cache miss
-DS->>DS : scrapeTeamForm()
-DS->>QC : parseIntelWithLLM() (optional)
-QC-->>DS : structured intel
-DS->>DB : cache write (form)
-else cache hit
-DS-->>PE : cached form
-end
-PE->>DS : fetchWebIntel(home, away, date, stage)
-DS->>DB : cache lookup (intel)
-alt cache miss
-DS->>DS : scrapeTeamNews(home/away)
-DS->>QC : parseIntelWithLLM()
-QC-->>DS : structured intel
-DS->>DB : cache write (intel)
-else cache hit
-DS-->>PE : cached intel
-end
-PE->>H2H : h2hToProbs(home, away)
-H2H->>DB : ensureH2HData() + query
-H2H-->>PE : H2H probs
-PE->>LS : fetchLineup(matchId)
-LS->>DB : cache lookup (lineups)
-alt cache miss
-LS->>LS : fetchLineupFromAPI()/scrapeLineup()
-LS->>DB : cache write (lineups)
-else cache hit
-LS-->>PE : cached lineup
-end
-PE->>PE : blend signals (log-pool)
-PE->>DB : persist prediction
+FE->>API : GET /api/matches/ : id/prediction
+API->>PE : predict(matchId)
+PE->>DS : fetchTeamForm(), fetchWebIntel()
+PE->>H2H : h2hToProbs()
+PE->>LIN : fetchLineup()
+LIN->>DB : read/write lineups
+DS->>DB : read/write web_intel_cache
+H2H->>DB : read h2h_results
+PE->>DB : write predictions
+API-->>FE : prediction response
 ```
 
 **Diagram sources**
-- [predictionEngine.js:665-896](file://backend/services/predictionEngine.js#L665-L896)
-- [dataService.js:68-490](file://backend/services/dataService.js#L68-L490)
+- [server.js:1-41](file://backend/server.js#L1-L41)
+- [predictionEngine.js:690-922](file://backend/services/predictionEngine.js#L690-L922)
+- [dataService.js:68-133](file://backend/services/dataService.js#L68-L133)
+- [h2hService.js:192-266](file://backend/services/h2hService.js#L192-L266)
 - [lineupService.js:221-316](file://backend/services/lineupService.js#L221-L316)
-- [h2hService.js:272-312](file://backend/services/h2hService.js#L272-L312)
-- [qwenClient.js:53-101](file://backend/services/qwenClient.js#L53-L101)
-- [db.js:147-194](file://backend/database/db.js#L147-L194)
+- [db.js:147-157](file://backend/database/db.js#L147-L157)
 
 ## Detailed Component Analysis
 
-### External API Integration and Caching (dataService.js)
-- football-data.org client:
-  - Base URL and auth header construction
-  - Team ID mapping to API team IDs
-  - Timeout configuration
-- Team form:
-  - Cache validation by TTL
-  - API fetch with finished matches and result derivation
-  - Fallback to web scraping and synthetic generation
-- Head-to-head:
-  - API fetch filtered by opponent
-  - Fallback to Elo-based estimates
-- Web intelligence:
-  - Google News RSS scraping for team news
-  - LLM parsing with anti-hallucination filtering
-  - Regex fallback for injuries
-  - Cache with shorter TTL for intel
-- Live result sync:
-  - IN_PLAY/PAUSED → LIVE promotion
-  - FINISHED → finalize scores and record results
-  - Reversal handling for API/home-away mismatches
+### dataService: External Integration and Live Sync
+Responsibilities:
+- Team form retrieval from API with fallback to web scraping and synthetic generation
+- Head-to-head records from API with fallback to Elo-based estimates
+- Pre-match intelligence via web scraping and LLM parsing with anti-hallucination validation
+- Real-time live result synchronization with score reversal logic and penalty handling
+- Caching with TTL controls for form, H2H, and intel
+
+Key implementation patterns:
+- Team ID mapping for API compatibility
+- Parallel scraping for efficiency
+- LLM parsing with strict validation against source text
+- Cache-first strategy with TTL checks
+- Lazy loading to avoid circular dependencies
 
 ```mermaid
 flowchart TD
-Start(["fetchWebIntel"]) --> CacheCheck["Check web_intel_cache"]
-CacheCheck --> |hit| ReturnCached["Return cached intel"]
-CacheCheck --> |miss| Scrape["scrapeTeamNews() for both teams"]
-Scrape --> LLM["parseIntelWithLLM()"]
-LLM --> ParseOK{"LLM parsed?"}
-ParseOK --> |Yes| Verify["verifyInjuriesAgainstSource()"]
-Verify --> CacheWrite["Cache intel (TTL=4h)"]
-ParseOK --> |No| RegexFallback["scrapeInjuriesFallback()"]
-RegexFallback --> CacheWrite
-CacheWrite --> ReturnResult["Return intel"]
+Start(["fetchWebIntel"]) --> CheckCache["Check web_intel_cache"]
+CheckCache --> |Fresh| ReturnCache["Return cached intel"]
+CheckCache --> |Expired| Scrape["Scrape team news (parallel)"]
+Scrape --> LLM["Parse with Qwen LLM"]
+LLM --> |Success| Validate["Anti-hallucination validation"]
+LLM --> |Fail| RegexFallback["Regex-based injury extraction"]
+Validate --> CacheStore["Store in web_intel_cache"]
+RegexFallback --> CacheStore
+CacheStore --> ReturnResult["Return intel"]
 ```
 
 **Diagram sources**
-- [dataService.js:413-490](file://backend/services/dataService.js#L413-L490)
-- [dataService.js:273-411](file://backend/services/dataService.js#L273-L411)
-- [dataService.js:294-380](file://backend/services/dataService.js#L294-L380)
+- [dataService.js:432-509](file://backend/services/dataService.js#L432-L509)
+- [dataService.js:294-399](file://backend/services/dataService.js#L294-L399)
+- [dataService.js:401-430](file://backend/services/dataService.js#L401-L430)
 
 **Section sources**
-- [dataService.js:18-583](file://backend/services/dataService.js#L18-L583)
+- [dataService.js:18-41](file://backend/services/dataService.js#L18-L41)
+- [dataService.js:68-133](file://backend/services/dataService.js#L68-L133)
+- [dataService.js:190-246](file://backend/services/dataService.js#L190-L246)
+- [dataService.js:432-509](file://backend/services/dataService.js#L432-L509)
+- [dataService.js:514-599](file://backend/services/dataService.js#L514-L599)
 
-### Lineup Service (lineupService.js)
-- Sources:
-  - football-data.org API (lineups)
-  - ESPN scrape
-  - Manual override
-- Strength scoring:
-  - Position weights and ELO-derived player ratings
-  - Normalized score 0–10
-- Absence detection:
-  - Compares current starters to recent lineup patterns
-- Impact conversion:
-  - Converts strength delta to probability adjustments for the prediction engine
+### h2hService: Real Head-to-Head Dataset
+Responsibilities:
+- Seed 47k-match dataset from GitHub repository on first call
+- Normalize team names to internal 3-letter codes
+- Compute competition-weighted and recency-weighted head-to-head statistics
+- Convert H2H records to probability vectors with shrinkage toward base rates
+
+Implementation highlights:
+- CSV parsing with quoted-field support
+- Seeding guarded by a meta table and mutex to prevent concurrent downloads
+- Weighted advantage computation and data quality scoring
+- Fallback to neutral probabilities when insufficient history
 
 ```mermaid
 sequenceDiagram
 participant Caller as "Caller"
-participant LS as "lineupService.js"
+participant H2H as "h2hService.js"
 participant DB as "db.js"
-Caller->>LS : fetchLineup(matchId)
-LS->>DB : cache lookup (home/away)
-alt cache hit
-LS-->>Caller : buildLineupResult()
-else cache miss
-LS->>LS : fetchLineupFromAPI() or scrapeLineupESPN()
-LS->>LS : computeStrengthScore()
-LS->>DB : INSERT OR REPLACE lineups
-LS-->>Caller : buildLineupResult()
-end
-```
-
-**Diagram sources**
-- [lineupService.js:221-316](file://backend/services/lineupService.js#L221-L316)
-- [lineupService.js:158-183](file://backend/services/lineupService.js#L158-L183)
-- [lineupService.js:318-362](file://backend/services/lineupService.js#L318-L362)
-
-**Section sources**
-- [lineupService.js:1-425](file://backend/services/lineupService.js#L1-L425)
-
-### Suspension Tracking Service (suspensionService.js)
-- Adds or updates suspensions with reasons and match-specific bans
-- Retrieves suspensions for a match and yellow-card watch lists
-- Provides team-level suspension history and global summary
-
-```mermaid
-flowchart TD
-A["addSuspension()"] --> B["Upsert suspensions"]
-C["getSuspensionsForMatch()"] --> D["Query home/away suspensions"]
-C --> E["Query yellow watch (threshold by stage)"]
-F["getTeamSuspensions()"] --> G["Join matches and teams"]
-H["getAllSuspensions()"] --> I["Join matches and teams"]
-```
-
-**Diagram sources**
-- [suspensionService.js:16-83](file://backend/services/suspensionService.js#L16-L83)
-- [suspensionService.js:108-143](file://backend/services/suspensionService.js#L108-L143)
-
-**Section sources**
-- [suspensionService.js:1-152](file://backend/services/suspensionService.js#L1-L152)
-
-### Head-to-Head History Service (h2hService.js)
-- Seeding:
-  - Downloads CSV from martj42/international_results
-  - Normalizes team names and stores matches with competition weights
-- Queries:
-  - Returns last N matches with recency weighting and weighted advantage
-- Conversion to probabilities:
-  - Shrinks toward base international rates with sample-size dependent shrinkage
-
-```mermaid
-flowchart TD
-Seed["ensureH2HData()"] --> Download["Download CSV"]
-Download --> Insert["Insert into h2h_results"]
-Query["getRealH2H()"] --> Enrich["Compute recency weights"]
-Enrich --> Summary["Compute weighted advantage"]
-Summary --> Prob["h2hToProbs(): shrink toward base rates"]
+Caller->>H2H : getRealH2H(teamA, teamB, limit)
+H2H->>DB : ensureH2HTable()
+H2H->>DB : ensureH2HData() (seed if needed)
+H2H->>DB : SELECT h2h_results WHERE team_a=? AND team_b=?
+DB-->>H2H : rows
+H2H->>H2H : enrich with comp_weight + recency_weight
+H2H-->>Caller : {matches, summary}
 ```
 
 **Diagram sources**
 - [h2hService.js:95-165](file://backend/services/h2hService.js#L95-L165)
 - [h2hService.js:192-266](file://backend/services/h2hService.js#L192-L266)
-- [h2hService.js:272-312](file://backend/services/h2hService.js#L272-L312)
 
 **Section sources**
-- [h2hService.js:1-315](file://backend/services/h2hService.js#L1-L315)
+- [h2hService.js:23-46](file://backend/services/h2hService.js#L23-L46)
+- [h2hService.js:95-165](file://backend/services/h2hService.js#L95-L165)
+- [h2hService.js:192-266](file://backend/services/h2hService.js#L192-L266)
+- [h2hService.js:272-312](file://backend/services/h2hService.js#L272-L312)
 
-### Odds Service (oddsService.js)
-- Fetches real odds from The Odds API
-- Parses bookmaker markets and computes consensus odds and no-vig probabilities
-- Provides model edge comparison against predictions
-- Caches results for 30 minutes and offers mock odds fallback when API key is absent
+### lineupService: Lineup Tracking and Strength Modeling
+Responsibilities:
+- Fetch confirmed lineups from API or web scrapers
+- Compute lineup strength scores using position weights and ELO-derived ratings
+- Detect key absences by comparing current starters to recent patterns
+- Translate lineup impact into probability adjustments for the prediction engine
+
+Key features:
+- Position importance weights summing to 10
+- Strength normalization to 0–10 scale
+- Absence detection via frequency analysis across previous lineups
+- Manual lineup submission capability
 
 ```mermaid
 flowchart TD
-Start(["getMatchOdds"]) --> Cache["Check web_intel_cache (odds)"]
-Cache --> |fresh| Return["Return cached"]
-Cache --> |stale| Fetch["Fetch from The Odds API"]
-Fetch --> Parse["Parse and compute no-vig"]
-Parse --> Compare["Compare with model probs"]
-Compare --> CacheWrite["Cache result (30m)"]
-CacheWrite --> Return
+Start(["fetchLineup"]) --> CheckCache["Check lineups table"]
+CheckCache --> |Both sides cached| Build["Build result from cache"]
+CheckCache --> |Missing| LoadMatch["Load match + team ELO"]
+LoadMatch --> TimeCheck{"Within 60–75 min of KO?"}
+TimeCheck --> |No| ReturnUnavailable["Return unavailable"]
+TimeCheck --> |Yes| TryAPI["Try API"]
+TryAPI --> |Success| Compute["Compute strength scores"]
+TryAPI --> |Fail| TryESPN["Scrape ESPN"]
+TryESPN --> |Success| Compute
+TryESPN --> |Fail| ReturnUnavailable
+Compute --> Store["INSERT OR REPLACE lineups"]
+Store --> Build
+Build --> Return["Return lineup result"]
 ```
 
 **Diagram sources**
-- [oddsService.js:131-200](file://backend/services/oddsService.js#L131-L200)
-- [oddsService.js:203-242](file://backend/services/oddsService.js#L203-L242)
+- [lineupService.js:221-316](file://backend/services/lineupService.js#L221-L316)
+- [lineupService.js:158-183](file://backend/services/lineupService.js#L158-L183)
+- [lineupService.js:190-218](file://backend/services/lineupService.js#L190-L218)
 
 **Section sources**
-- [oddsService.js:1-242](file://backend/services/oddsService.js#L1-L242)
+- [lineupService.js:46-61](file://backend/services/lineupService.js#L46-L61)
+- [lineupService.js:158-183](file://backend/services/lineupService.js#L158-L183)
+- [lineupService.js:190-218](file://backend/services/lineupService.js#L190-L218)
+- [lineupService.js:221-316](file://backend/services/lineupService.js#L221-L316)
+- [lineupService.js:399-422](file://backend/services/lineupService.js#L399-L422)
 
-### Prediction Engine Integration (predictionEngine.js)
-- Consumes signals:
-  - Form (opponent-quality weighted)
-  - Intel (LLM-parsed, anti-hallucination)
-  - H2H (real history)
-  - Lineup (confirmed XI strength)
-  - Rest days
-- Blending:
-  - Log-pool with per-signal weights
-  - Temperature scaling for calibration
-- Scoreline derivation:
-  - Reweights backbone matrix to align with blended outcome probabilities
-- Output:
-  - Win/draw/lose probabilities, expected scores, top scorelines, factors, insight
+### suspensionService: Yellow/Red Card Tracking
+Responsibilities:
+- Track yellow card accumulation and red card suspensions
+- Compute watch lists for players nearing suspension thresholds
+- Stage-aware suspension rules (e.g., yellow wipe after semis)
+- Provide per-match suspension reports and team-wide summaries
+
+```mermaid
+flowchart TD
+Start(["getSuspensionsForMatch"]) --> LoadMatch["Load match + teams"]
+LoadMatch --> HomeSus["SELECT home suspensions"]
+LoadMatch --> AwaySus["SELECT away suspensions"]
+LoadMatch --> YellowWatch["Compute yellow watch (threshold by stage)"]
+HomeSus --> Merge["Merge home/away + yellow watch"]
+AwaySus --> Merge
+YellowWatch --> Merge
+Merge --> Return["Return suspensions report"]
+```
+
+**Diagram sources**
+- [suspensionService.js:44-83](file://backend/services/suspensionService.js#L44-L83)
+- [suspensionService.js:86-105](file://backend/services/suspensionService.js#L86-L105)
+
+**Section sources**
+- [suspensionService.js:16-41](file://backend/services/suspensionService.js#L16-L41)
+- [suspensionService.js:44-83](file://backend/services/suspensionService.js#L44-L83)
+- [suspensionService.js:86-105](file://backend/services/suspensionService.js#L86-L105)
+
+### Prediction Engine Integration
+The prediction engine integrates data services as follows:
+- Retrieves team form and injuries via dataService
+- Obtains H2H probabilities via h2hService
+- Fetches lineup data via lineupService
+- Blends signals using log-pool weighting and applies temperature calibration
+- Writes predictions to the database and generates insights
 
 ```mermaid
 sequenceDiagram
 participant PE as "predictionEngine.js"
 participant DS as "dataService.js"
 participant H2H as "h2hService.js"
-participant LS as "lineupService.js"
-PE->>DS : fetchTeamForm(home/away)
-PE->>DS : fetchWebIntel(home, away, date, stage)
-PE->>H2H : h2hToProbs(home, away)
-PE->>LS : fetchLineup(matchId)
-PE->>PE : logPool blend + temperature scaling
-PE->>PE : reweight matrix + pick top scores
-PE->>DB : persist prediction
+participant LIN as "lineupService.js"
+participant DB as "db.js"
+PE->>DS : fetchTeamForm(), fetchWebIntel()
+PE->>H2H : h2hToProbs()
+PE->>LIN : fetchLineup()
+LIN->>DB : read/write lineups
+DS->>DB : read/write web_intel_cache
+PE->>DB : INSERT predictions
 ```
 
 **Diagram sources**
-- [predictionEngine.js:665-896](file://backend/services/predictionEngine.js#L665-L896)
-- [dataService.js:68-490](file://backend/services/dataService.js#L68-L490)
+- [predictionEngine.js:690-922](file://backend/services/predictionEngine.js#L690-L922)
+- [dataService.js:68-133](file://backend/services/dataService.js#L68-L133)
 - [h2hService.js:272-312](file://backend/services/h2hService.js#L272-L312)
 - [lineupService.js:221-316](file://backend/services/lineupService.js#L221-L316)
+- [db.js:147-157](file://backend/database/db.js#L147-L157)
 
 **Section sources**
-- [predictionEngine.js:1-1020](file://backend/services/predictionEngine.js#L1-L1020)
-
-### Post-Match Analysis and Learning (analysisService.js)
-- Records match results, updates group/knockout standings, and recalculates group tables
-- Updates both legacy ELO and v2 attack/defense ratings
-- Computes Brier score, correctness, points, and generates analysis notes
-- Triggers calibration refits periodically
-
-```mermaid
-flowchart TD
-A["recordMatchResult()"] --> B["Update matches status/scores"]
-B --> C["Update group/knockout standings"]
-C --> D["Update ratings (ELO + v2)"]
-D --> E["Lookup latest prediction"]
-E --> F["Compute Brier score + points"]
-F --> G["Persist model_performance"]
-G --> H["Periodic calibration refit"]
-```
-
-**Diagram sources**
-- [analysisService.js:76-218](file://backend/services/analysisService.js#L76-L218)
-
-**Section sources**
-- [analysisService.js:1-422](file://backend/services/analysisService.js#L1-L422)
+- [predictionEngine.js:39-43](file://backend/services/predictionEngine.js#L39-L43)
+- [predictionEngine.js:758-822](file://backend/services/predictionEngine.js#L758-L822)
+- [predictionEngine.js:835-846](file://backend/services/predictionEngine.js#L835-L846)
 
 ## Dependency Analysis
-- Circular dependency avoidance:
-  - Lazy-loading of predictionEngine from dataService and analysisService to prevent circular requires
-- External dependencies:
-  - axios for HTTP requests
-  - cheerio for HTML/XML parsing
-  - node-sqlite3-wasm for database access
-- Internal dependencies:
-  - All services depend on db.js for schema initialization and queries
-  - qwenClient.js provides LLM capabilities with retry/backoff
+The data services layer exhibits clear separation of concerns with minimal coupling:
+- dataService depends on axios, cheerio, and qwenClient for external integrations
+- h2hService depends on SQLite for persistent storage of the 47k-match dataset
+- lineupService and suspensionService depend on SQLite for caching and tracking
+- predictionEngine orchestrates all services and persists results
+- analysisService updates model performance and standings after matches
 
 ```mermaid
 graph LR
-DS["dataService.js"] --> DB["db.js"]
-DS --> QC["qwenClient.js"]
-LS["lineupService.js"] --> DB
-SS["suspensionService.js"] --> DB
-H2H["h2hService.js"] --> DB
-OD["oddsService.js"] --> DB
-PE["predictionEngine.js"] --> DB
-PE --> DS
-PE --> LS
+DS["dataService.js"] --> AX["axios"]
+DS --> CH["cheerio"]
+DS --> QW["qwenClient.js"]
+H2H["h2hService.js"] --> DB["db.js"]
+LIN["lineupService.js"] --> DB
+SUS["suspensionService.js"] --> DB
+PE["predictionEngine.js"] --> DS
 PE --> H2H
-AS["analysisService.js"] --> DB
-AS --> PE
+PE --> LIN
+AS["analysisService.js"] --> PE
+AS --> DB
 ```
 
 **Diagram sources**
-- [dataService.js:1-21](file://backend/services/dataService.js#L1-L21)
-- [lineupService.js:42-43](file://backend/services/lineupService.js#L42-L43)
-- [suspensionService.js](file://backend/services/suspensionService.js#L13)
+- [dataService.js:7-21](file://backend/services/dataService.js#L7-L21)
 - [h2hService.js:20-21](file://backend/services/h2hService.js#L20-L21)
-- [oddsService.js:19-20](file://backend/services/oddsService.js#L19-L20)
+- [lineupService.js:41-43](file://backend/services/lineupService.js#L41-L43)
+- [suspensionService.js:13](file://backend/services/suspensionService.js#L13)
 - [predictionEngine.js:37-43](file://backend/services/predictionEngine.js#L37-L43)
 - [analysisService.js:13-16](file://backend/services/analysisService.js#L13-L16)
-- [qwenClient.js:13-13](file://backend/services/qwenClient.js#L13-L13)
 - [db.js:1-3](file://backend/database/db.js#L1-L3)
 
 **Section sources**
-- [dataService.js:1-21](file://backend/services/dataService.js#L1-L21)
-- [lineupService.js:42-43](file://backend/services/lineupService.js#L42-L43)
-- [suspensionService.js](file://backend/services/suspensionService.js#L13)
+- [dataService.js:7-21](file://backend/services/dataService.js#L7-L21)
 - [h2hService.js:20-21](file://backend/services/h2hService.js#L20-L21)
-- [oddsService.js:19-20](file://backend/services/oddsService.js#L19-L20)
+- [lineupService.js:41-43](file://backend/services/lineupService.js#L41-L43)
+- [suspensionService.js:13](file://backend/services/suspensionService.js#L13)
 - [predictionEngine.js:37-43](file://backend/services/predictionEngine.js#L37-L43)
 - [analysisService.js:13-16](file://backend/services/analysisService.js#L13-L16)
-- [qwenClient.js:13-13](file://backend/services/qwenClient.js#L13-L13)
 - [db.js:1-3](file://backend/database/db.js#L1-L3)
 
 ## Performance Considerations
-- Caching:
-  - Team form: 12 hours
-  - Head-to-head: 24 hours
-  - Intel: 4 hours
-  - Odds: 30 minutes
-- Parallelization:
-  - Scrapes for both teams run concurrently
-  - Signal fetching for prediction runs in parallel where possible
-- Data freshness:
-  - Live sync checks IN_PLAY/PAUSED and FINISHED matches
-  - Cache invalidation occurs when TTL expires
-- Database tuning:
-  - Busy timeout, synchronous mode, foreign keys enabled
-  - Indexes on frequently queried columns (e.g., h2h_results)
-- LLM reliability:
-  - Retry with exponential backoff on 5xx or timeouts
-  - JSON extraction retry for robust parsing
+- Caching: TTL-based caching for form (12h), H2H (24h), and intel (4h) minimizes external calls and improves response times.
+- Parallelization: Web scraping for injuries and news runs in parallel to reduce latency.
+- Database optimizations: WAL mode, foreign keys, and appropriate indexes improve concurrency and query performance.
+- Backoff and retries: LLM calls implement exponential backoff to handle transient failures gracefully.
+- Lightweight transformations: Position weights and strength scoring are computed in-process for quick turnaround.
 
 [No sources needed since this section provides general guidance]
 
 ## Troubleshooting Guide
-- API key issues:
-  - Missing FOOTBALL_DATA_API_KEY disables live sync and API-based retrievals
-  - Missing DASHSCOPE_API_KEY prevents LLM calls; fallbacks still work
-  - Missing ODDS_API_KEY enables mock odds based on model predictions
-- Network failures:
-  - axios timeouts and retry logic in dataService and qwenClient
-  - Web scraping failures fall back to defaults or synthetic data
-- Cache anomalies:
-  - Cache validation uses fetched_at and TTL; manual cache clearing may be needed
-- Data mismatches:
-  - syncLiveResults handles API/home-away reversals and skips unknown team IDs
-- Database errors:
-  - node-sqlite3-wasm lock cleanup on startup; migrations applied on first use
+Common issues and remedies:
+- API key missing: Live sync and H2H API calls are skipped when the API key is not configured.
+- Scraping failures: Fallbacks to regex-based extraction and synthetic data generation ensure continuity.
+- LLM parsing errors: Anti-hallucination filtering removes invalid claims; fallback to regex extraction occurs automatically.
+- Cache staleness: TTL checks ensure fresh data is fetched when cached entries expire.
+- Database contention: Lock handling and transaction blocks prevent corruption during seeding and updates.
 
 **Section sources**
-- [dataService.js:496-580](file://backend/services/dataService.js#L496-L580)
-- [qwenClient.js:60-101](file://backend/services/qwenClient.js#L60-L101)
-- [oddsService.js:160-170](file://backend/services/oddsService.js#L160-L170)
+- [dataService.js:514-518](file://backend/services/dataService.js#L514-L518)
+- [dataService.js:294-399](file://backend/services/dataService.js#L294-L399)
+- [dataService.js:401-430](file://backend/services/dataService.js#L401-L430)
+- [h2hService.js:95-106](file://backend/services/h2hService.js#L95-L106)
 - [db.js:10-21](file://backend/database/db.js#L10-L21)
 
 ## Conclusion
-The data services layer provides a robust, resilient pipeline for ingesting, enriching, and serving match-related data. It balances external API reliability with web scraping and synthetic fallbacks, enforces data freshness via TTL-based caching, and integrates tightly with the prediction engine. The modular design, clear separation of concerns, and comprehensive error handling enable scalable operation and maintainability.
+The data services layer provides a robust, resilient pipeline for integrating external data, transforming it into actionable signals, and feeding them into the prediction engine. Through careful caching, fallback strategies, and anti-hallucination validation, it ensures reliable predictions even under adverse conditions. The modular design enables easy maintenance and extension as new data sources and signals are introduced.
+
+[No sources needed since this section summarizes without analyzing specific files]
+
+## Appendices
+
+### Data Freshness and Update Frequencies
+- Team form: cached for 12 hours; refreshed on demand or via periodic jobs
+- Head-to-head: cached for 24 hours; static dataset seeded once and reused thereafter
+- Pre-match intelligence: cached for 4 hours; refreshed frequently due to breaking news
+- Lineups: cached per match; available within 60–75 minutes before kickoff
+- Suspensions: updated in real-time via manual entries and match events
+
+**Section sources**
+- [dataService.js:30-35](file://backend/services/dataService.js#L30-L35)
+- [h2hService.js:95-165](file://backend/services/h2hService.js#L95-L165)
+- [lineupService.js:250-262](file://backend/services/lineupService.js#L250-L262)
+
+### Integration with Prediction Engine and UI
+- Backend endpoints expose predictions, H2H, lineups, suspensions, and analytics
+- Frontend client consumes these endpoints to render match details, predictions, and tournament insights
+- Multi-agent orchestration can be toggled via environment variables and model configuration
+
+**Section sources**
+- [server.js:1-41](file://backend/server.js#L1-L41)
+- [client.js:19-50](file://frontend/src/api/client.js#L19-L50)
+- [predictionEngine.js:56-61](file://backend/services/predictionEngine.js#L56-L61)

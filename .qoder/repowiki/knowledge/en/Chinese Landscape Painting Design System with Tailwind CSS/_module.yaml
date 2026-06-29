@@ -5,10 +5,9 @@ scope: []
 source_files:
     - frontend/tailwind.config.js
     - frontend/src/index.css
-    - frontend/postcss.config.js
     - frontend/src/contexts/ThemeContext.jsx
-    - frontend/src/utils/chartColors.js
     - frontend/src/components/TangOrnaments.jsx
+    - frontend/postcss.config.js
     - frontend/src/App.jsx
     - frontend/src/components/MatchCard.jsx
 depends_on: []

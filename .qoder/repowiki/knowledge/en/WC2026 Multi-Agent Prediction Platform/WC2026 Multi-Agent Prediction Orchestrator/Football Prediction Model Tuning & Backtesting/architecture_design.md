@@ -1,5 +1,0 @@
-- **Model Abstraction**: Defines a standard interface (`init`, `predict`, `update`) implemented by `modelBaseline.js` (ELO/Poisson blend) and `modelV2.js` (Dixon-Coles bivariate Poisson).
-- **Backtest Harness**: `backtestHarness.js` executes walk-forward validation on historical data loaded by `backtestData.js`, calculating metrics like Brier score, LogLoss, and calibration.
-- **Tuning Pipeline**: `tuneV2.js` performs grid-search hyperparameter optimization using the backtest harness to minimize Brier score.
-- **Database Maintenance**: Scripts like `relearnR1.js`, `backfillPoints.js`, and `fixScores.js` interact directly with the SQLite database to reset ratings, re-grade historical performance, or correct match results.
-- **Verification**: `dryRunCompare.js` and `verifyTuning.js` compare stored predictions against live engine outputs to validate tuning changes without side effects.

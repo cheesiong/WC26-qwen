@@ -1,0 +1,2 @@
+- `bash start.sh`: One-command initialization that installs dependencies for both modules, seeds the SQLite database, and launches backend and frontend servers in parallel.
+- `bash setup-ecs.sh`: Automated infrastructure provisioning script that configures VPC, security groups, and Docker environments on Alibaba Cloud ECS before deploying the application.
