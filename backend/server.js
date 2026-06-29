@@ -655,9 +655,9 @@ async function runLineupCron() {
   for (const m of upcoming) {
     try {
       const result = await fetchLineup(m.id);
-      if (result?.available) {
+      // Only re-predict when a FRESH lineup was fetched (not from cache)
+      if (result?.available && result.source !== 'cached') {
         console.log(`[cron] lineup fetched for ${m.id} (${result.source})`);
-        // Re-run prediction to incorporate lineup signal
         try {
           await predict(m.id, true);
           console.log(`[cron] prediction updated for ${m.id} with lineup`);
