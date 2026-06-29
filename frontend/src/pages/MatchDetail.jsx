@@ -1276,7 +1276,7 @@ export default function MatchDetail() {
                           </div>
                           <div className="text-lg font-bold text-apple-text">
                             {lineup[side].strengthScore.toFixed(1)}
-                            <span className="text-xs text-apple-tertiary">/100</span>
+                            <span className="text-xs text-apple-tertiary">/10</span>
                           </div>
                         </div>
                       )
