@@ -628,8 +628,7 @@ async function runPredictionCron() {
 }
 
 cron.schedule('0 0-12 * * *',   runPredictionCron, { timezone: 'Asia/Singapore' }); // hourly midnight–noon
-cron.schedule('0 14,16,18 * * *', runPredictionCron, { timezone: 'Asia/Singapore' }); // 2pm, 4pm, 6pm SGT
-cron.schedule('30 20,21,22 * * *', runPredictionCron, { timezone: 'Asia/Singapore' }); // 8:30pm, 9:30pm, 10:30pm SGT
+cron.schedule('30 20,21 * * *', runPredictionCron, { timezone: 'Asia/Singapore' }); // 8:30pm, 9:30pm SGT
 
 // Fetch lineups for matches within 2 hours of kickoff, every 15 minutes
 async function runLineupCron() {

@@ -15,14 +15,17 @@
 - [PredictionBar.jsx](file://frontend/src/components/PredictionBar.jsx)
 - [App.jsx](file://frontend/src/App.jsx)
 - [main.jsx](file://frontend/src/main.jsx)
+- [lineupService.js](file://backend/services/lineupService.js)
+- [predictionEngine.js](file://backend/services/predictionEngine.js)
+- [lineupAgent.js](file://backend/services/agents/lineupAgent.js)
 </cite>
 
 ## Update Summary
 **Changes Made**
-- Enhanced Predictions page with new KO (knockout) filter functionality
-- Improved group filter with knockout-only option
-- Added dedicated KO filter button in the filter bar
-- Updated filtering logic to support knockout-only matches
+- Updated MatchDetail page documentation to reflect the corrected lineup strength score display scale fix
+- The strength score display now correctly shows '/10' instead of the previous incorrect '/100' scale indicator
+- Enhanced backend lineup service documentation to clarify the 0-10 scale implementation
+- Updated prediction engine documentation to show proper strength score formatting
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -233,6 +236,8 @@ Probs --> Render2["Render podium + table"]
 - Loading states: Skeleton cards while loading; empty state message when match not found.
 - URL parameters: Uses useParams to extract match id; navigates to team pages programmatically.
 
+**Updated** Enhanced lineup strength score display to correctly show '/10' scale instead of '/100'. The strength scores are now properly formatted with one decimal place and display the correct 0-10 scale indicator.
+
 ```mermaid
 sequenceDiagram
 participant Page as "MatchDetail"
@@ -370,10 +375,46 @@ Pred --> Client
 - Language switching: MatchDetail adjusts prediction language via query parameters; ensure lang is passed correctly.
 - Route mismatches: App.jsx includes legacy redirects for older paths to ensure smooth navigation.
 - KO filter issues: The KO filter uses the absence of group_code field to identify knockout matches; ensure backend properly handles this distinction.
+- Lineup strength score display: The strength score now correctly displays '/10' instead of '/100'; ensure frontend formatting matches backend 0-10 scale.
 
 **Section sources**
 - [MatchDetail.jsx:739-759](file://frontend/src/pages/MatchDetail.jsx#L739-L759)
 - [App.jsx:269-275](file://frontend/src/App.jsx#L269-L275)
 
+## Backend Services Enhancement
+
+### Lineup Service
+The backend lineup service processes lineup data and calculates strength scores on a 0-10 scale. The service includes:
+
+- Strength score calculation: Uses homeScore and awayScore with default 5.0 if not provided
+- Delta calculation: Computes difference between home and away scores for impact assessment
+- Normalization: Scales delta to -1 to +1 range for prediction engine integration
+- Key absences detection: Identifies important player absences that amplify lineup impact
+
+**Section sources**
+- [lineupService.js:318-362](file://backend/services/lineupService.js#L318-L362)
+
+### Prediction Engine
+The prediction engine formats lineup strength scores for display with proper scale indicators:
+
+- Score formatting: Uses toFixed(1) to display one decimal place
+- Scale indication: Shows "Lineup strength — Home: {score}/10 | Away: {score}/10"
+- Impact calculation: Translates strength delta to probability adjustments
+
+**Section sources**
+- [predictionEngine.js:527-545](file://backend/services/predictionEngine.js#L527-L545)
+
+### Lineup Agent
+The lineup agent provides calibration guidance for strength delta interpretation:
+
+- Clear advantage: delta > +2.0 indicates strong home lineup advantage
+- Slight edge: +0.5 to +2.0 indicates slight home advantage
+- Balanced: -0.5 to +0.5 indicates roughly equal lineups
+- Slight disadvantage: -2.0 to -0.5 indicates slight away advantage
+- Strong disadvantage: delta < -2.0 indicates strong away lineup advantage
+
+**Section sources**
+- [lineupAgent.js:27-36](file://backend/services/agents/lineupAgent.js#L27-L36)
+
 ## Conclusion
-The page components are structured around a clean separation of concerns: each page encapsulates its own data fetching, state management, and rendering logic while leveraging shared components and a centralized API client. The routing integrates seamlessly with navigation patterns, and the design emphasizes responsiveness and accessibility through thoughtful loading states and layout choices. The Predictions page now features enhanced filtering capabilities with the new KO (knockout) filter functionality, providing users with more granular control over match viewing preferences.
+The page components are structured around a clean separation of concerns: each page encapsulates its own data fetching, state management, and rendering logic while leveraging shared components and a centralized API client. The routing integrates seamlessly with navigation patterns, and the design emphasizes responsiveness and accessibility through thoughtful loading states and layout choices. The MatchDetail page now features the corrected lineup strength score display showing the proper '/10' scale instead of the previous '/100' indicator, providing users with accurate lineup strength assessments. The Predictions page continues to offer enhanced filtering capabilities with the new KO (knockout) filter functionality, providing users with more granular control over match viewing preferences.

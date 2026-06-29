@@ -18,11 +18,11 @@
 
 ## Update Summary
 **Changes Made**
-- Added comprehensive documentation for the new lineup cron job system
-- Updated cron job scheduling section to include the 15-minute lineup fetching mechanism
-- Added detailed coverage of the runLineupCron() function and its filtering logic
-- Documented the integration with lineup service and database caching
-- Enhanced the prediction engine section to show how lineup data is incorporated
+- Added comprehensive documentation for the new automatic prediction re-run mechanism triggered by lineup cron job
+- Updated cron job scheduling section to include detailed coverage of the runLineupCron() function and its error handling
+- Documented the predict() function call with lineup parameter and re-prediction workflows
+- Enhanced the prediction engine section to show how lineup data triggers automatic re-runs
+- Added error handling documentation for re-prediction workflows in cron jobs
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -43,7 +43,7 @@ The backend is organized around a central Express server that exposes REST endpo
 - Server and routing: Express server with CORS and JSON middleware, and route handlers for teams, groups, matches, predictions, tournaments, suspensions, analytics, and synchronization.
 - Services: Prediction engine, data fetching, analysis and calibration, bracket progression, AI agents, and utility services.
 - Database: SQLite abstraction with initialization, migrations, and schema management.
-- Scheduling: node-cron jobs for live result sync, batch prediction regeneration, and automatic lineup fetching.
+- Scheduling: node-cron jobs for live result sync, batch prediction regeneration, and automatic lineup fetching with prediction re-run capabilities.
 - Environment and packaging: dotenv-based configuration, npm scripts, and dependencies.
 
 ```mermaid
@@ -95,7 +95,7 @@ Cron --> Lineup
 ```
 
 **Diagram sources**
-- [server.js:18-717](file://backend/server.js#L18-L717)
+- [server.js:18-724](file://backend/server.js#L18-L724)
 - [predictionEngine.js:1-1046](file://backend/services/predictionEngine.js#L1-L1046)
 - [dataService.js:1-583](file://backend/services/dataService.js#L1-L583)
 - [analysisService.js:1-422](file://backend/services/analysisService.js#L1-L422)
@@ -108,7 +108,7 @@ Cron --> Lineup
 - [seed.js:1-69](file://backend/database/seed.js#L1-L69)
 
 **Section sources**
-- [server.js:1-717](file://backend/server.js#L1-L717)
+- [server.js:1-724](file://backend/server.js#L1-L724)
 - [package.json:1-32](file://backend/package.json#L1-L32)
 
 ## Core Components
@@ -121,10 +121,10 @@ Cron --> Lineup
 - Agent framework enabling multi-agent reasoning, conflict detection, and weighted aggregation.
 - Qwen client for OpenAI-compatible API calls with retry/backoff and latency tracking.
 - Lineup service for automatic lineup fetching and strength calculation with caching.
-- Scheduling via node-cron for live result sync, batch prediction regeneration, and automatic lineup fetching.
+- Scheduling via node-cron for live result sync, batch prediction regeneration, and automatic lineup fetching with prediction re-run capabilities.
 
 **Section sources**
-- [server.js:18-717](file://backend/server.js#L18-L717)
+- [server.js:18-724](file://backend/server.js#L18-L724)
 - [db.js:1-252](file://backend/database/db.js#L1-L252)
 - [predictionEngine.js:1-1046](file://backend/services/predictionEngine.js#L1-L1046)
 - [dataService.js:1-583](file://backend/services/dataService.js#L1-L583)
@@ -177,7 +177,7 @@ Lineup --> DB
 ```
 
 **Diagram sources**
-- [server.js:18-717](file://backend/server.js#L18-L717)
+- [server.js:18-724](file://backend/server.js#L18-L724)
 - [predictionEngine.js:1-1046](file://backend/services/predictionEngine.js#L1-L1046)
 - [dataService.js:1-583](file://backend/services/dataService.js#L1-L583)
 - [analysisService.js:1-422](file://backend/services/analysisService.js#L1-L422)
@@ -214,10 +214,10 @@ Route-->>Client : JSON response
 ```
 
 **Diagram sources**
-- [server.js:21-717](file://backend/server.js#L21-L717)
+- [server.js:21-724](file://backend/server.js#L21-L724)
 
 **Section sources**
-- [server.js:18-717](file://backend/server.js#L18-L717)
+- [server.js:18-724](file://backend/server.js#L18-L724)
 
 ### Database Abstraction and Schema
 - SQLite connection via node-sqlite3-wasm with path and lock handling.
@@ -253,7 +253,7 @@ LineupTable --> Ready(["Ready"])
 - Aggregation: Log-pool blending of signals with per-signal weights; temperature calibration; confidence tiers.
 - Multi-agent augmentation: When enabled, orchestrator composes specialist agents, detects conflicts, negotiates, and merges outputs.
 - Output: Probabilities, expected scores, top scorelines, insight, factors, and methodology.
-- Lineup integration: Automatic fetching and conversion to probability adjustments when available.
+- Lineup integration: Automatic fetching and conversion to probability adjustments when available, with automatic re-run capability.
 
 ```mermaid
 flowchart TD
@@ -434,31 +434,33 @@ Request/Response patterns:
 - Responses: JSON payloads; caching-aware predictions include a fromCache flag.
 
 **Section sources**
-- [server.js:24-717](file://backend/server.js#L24-L717)
+- [server.js:24-724](file://backend/server.js#L24-L724)
 
 ### Cron Job Scheduling
 - Live result sync: every 5 minutes during the tournament.
 - Prediction regeneration: hourly during SGT daytime hours and selected evening slots, covering the next three match days, with WC end-date cutoff.
-- **New**: Lineup fetching: every 15 minutes for matches within 2 hours of kickoff, automatically retrieving team lineups from multiple sources and caching them for prediction use.
+- **New**: Lineup fetching and prediction re-run: every 15 minutes for matches within 2 hours of kickoff, automatically retrieving team lineups from multiple sources, caching them, and triggering prediction re-runs with error handling for re-prediction workflows.
 
 ```mermaid
 flowchart TD
 CronStart["Cron Tick"] --> LiveSync["Sync Live Results"]
 LiveSync --> PredBatch["Regenerate Predictions for Next 3 Days"]
 PredBatch --> LineupCron["Fetch Lineups for Upcoming Matches"]
-LineupCron --> Notify["Notify IndexNow"]
-Notify --> CronEnd["Done"]
 LineupCron --> FilterMatches["Filter matches within 2h of KO"]
 FilterMatches --> FetchLineups["Fetch lineups from API/ESPN"]
 FetchLineups --> CacheLineups["Cache in database"]
+CacheLineups --> ReRunPredictions["Re-run predictions with lineup data"]
+ReRunPredictions --> ErrorHandling["Error handling for re-prediction workflows"]
+ErrorHandling --> Notify["Notify IndexNow"]
+Notify --> CronEnd["Done"]
 ```
 
 **Diagram sources**
-- [server.js:585-668](file://backend/server.js#L585-L668)
-- [server.js:634-666](file://backend/server.js#L634-L666)
+- [server.js:585-676](file://backend/server.js#L585-L676)
+- [server.js:634-676](file://backend/server.js#L634-L676)
 
 **Section sources**
-- [server.js:585-668](file://backend/server.js#L585-L668)
+- [server.js:585-676](file://backend/server.js#L585-L676)
 
 ## Dependency Analysis
 External dependencies include Express, node-cron, CORS, dotenv, node-sqlite3-wasm, axios, and cheerio. Internal dependencies are organized by service boundaries with clear import relationships.
@@ -498,7 +500,8 @@ QwenClient --- Agents["services/agents/*"]
 - Parallelism: Multi-agent orchestration and data fetching use Promise.allSettled for resilience; prediction batch generation enforces cooldowns.
 - Predictions: Background prediction generation on startup for the next three match days reduces cold-start latency.
 - Model calibration: Temperature and DC ρ refits improve reliability over time.
-- **New**: Lineup caching: Automatic caching prevents redundant API calls and reduces latency for prediction calculations.
+- **New**: Lineup caching and automatic re-run: Automatic caching prevents redundant API calls and reduces latency for prediction calculations, while the automatic re-run mechanism ensures predictions are updated when lineup data becomes available.
+- **New**: Error handling in re-prediction workflows: Comprehensive error handling prevents cascade failures in cron jobs and maintains system stability.
 
 ## Troubleshooting Guide
 Common issues and remedies:
@@ -508,7 +511,8 @@ Common issues and remedies:
 - Prediction cache misses: Use refresh=true query param or wait for cron regeneration.
 - Agent parsing failures: Agent output schema enforcement ensures fallbacks; inspect agent_messages for raw responses.
 - Live sync failures: Cron logs errors; verify API keys and network connectivity.
-- **New**: Lineup fetch failures: Check lineup availability window (60-75 minutes before kickoff); verify API keys for external sources; monitor cron logs for specific error messages.
+- **New**: Lineup fetch failures: Check lineup availability window (60-75 minutes before kickoff); verify API keys for external sources; monitor cron logs for specific error messages including re-prediction failure details.
+- **New**: Prediction re-run failures: The automatic re-run mechanism includes error handling that prevents individual match failures from affecting the entire cron job; check cron logs for specific re-prediction error messages.
 
 **Section sources**
 - [server.js:1-22](file://backend/server.js#L1-L22)
@@ -518,4 +522,4 @@ Common issues and remedies:
 - [lineupService.js:256-262](file://backend/services/lineupService.js#L256-L262)
 
 ## Conclusion
-The WC26-Qwen-Qoder backend combines a robust Express server, a sophisticated SQLite-backed data layer, and a multi-agent prediction system to deliver accurate, explainable match outcomes. Its modular services, resilient scheduling, and performance-conscious design enable scalable operation during the tournament lifecycle while maintaining high-quality analytics and user experiences. The new lineup cron job system enhances prediction accuracy by automatically fetching and caching team lineups for upcoming matches, providing crucial tactical insights that influence match outcome probabilities.
+The WC26-Qwen-Qoder backend combines a robust Express server, a sophisticated SQLite-backed data layer, and a multi-agent prediction system to deliver accurate, explainable match outcomes. Its modular services, resilient scheduling, and performance-conscious design enable scalable operation during the tournament lifecycle while maintaining high-quality analytics and user experiences. The new automatic prediction re-run mechanism triggered by the lineup cron job enhances prediction accuracy by automatically fetching and caching team lineups for upcoming matches, providing crucial tactical insights that influence match outcome probabilities. The comprehensive error handling in re-prediction workflows ensures system stability and prevents cascade failures, while the automatic re-run capability provides real-time updates as lineup data becomes available.
