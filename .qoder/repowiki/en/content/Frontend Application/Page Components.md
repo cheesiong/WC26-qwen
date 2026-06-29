@@ -17,6 +17,13 @@
 - [main.jsx](file://frontend/src/main.jsx)
 </cite>
 
+## Update Summary
+**Changes Made**
+- Enhanced Predictions page with new KO (knockout) filter functionality
+- Improved group filter with knockout-only option
+- Added dedicated KO filter button in the filter bar
+- Updated filtering logic to support knockout-only matches
+
 ## Table of Contents
 1. [Introduction](#introduction)
 2. [Project Structure](#project-structure)
@@ -65,7 +72,7 @@ C --> E
 - Tournament: Knockout bracket visualization and winner probabilities.
 - MatchDetail: Detailed prediction breakdown, historical prediction charts, H2H timeline, suspensions, agent session viewer, and lineup display.
 - TeamDetail: Team profile, stats, ELO trend chart, group/knockout journey, and all matches.
-- Predictions: Consolidated predictions vs actual results with scoring methodology and accuracy stats.
+- Predictions: Consolidated predictions vs actual results with scoring methodology and accuracy stats, featuring enhanced KO filtering capabilities.
 
 **Section sources**
 - [Dashboard.jsx:137-601](file://frontend/src/pages/Dashboard.jsx#L137-L601)
@@ -111,7 +118,7 @@ Page-->>Browser : Render with data + loading/error states
 ## Detailed Component Analysis
 
 ### Dashboard
-- Purpose: Primary landing page showcasing upcoming matches, tournament phase progress, top teams’ win probabilities, and quick access to key sections.
+- Purpose: Primary landing page showcasing upcoming matches, tournament phase progress, top teams' win probabilities, and quick access to key sections.
 - Data fetching: Uses Promise.all to fetch upcoming matches and winner probabilities concurrently, with an optional accuracy fetch.
 - State management: Manages arrays for dates/matches, winner probabilities, and accuracy; loading state toggled around fetch.
 - Layout and responsiveness: Hero banner with decorative elements, stats grid, phase timeline, and a two-column layout for matches and sidebar.
@@ -144,7 +151,7 @@ LogErr --> Done
 - Layout and responsiveness: Hero banner, progress bar, filter controls, and either grouped-by-date or grouped-by-stage lists.
 - Navigation: Programmatic navigation to team pages from match rows; links to match detail pages.
 - Lifecycle: useEffect triggers initial load on mount.
-- Error handling: Catch-all for fetch failures; loading skeleton UI.
+- error handling: Catch-all for fetch failures; loading skeleton UI.
 - Loading states: Skeleton cards while loading; empty state message when no results.
 - Filtering logic: Comprehensive filter pipeline with stage order mapping and group selection.
 
@@ -216,7 +223,7 @@ Probs --> Render2["Render podium + table"]
 - [Tournament.jsx:376-443](file://frontend/src/pages/Tournament.jsx#L376-L443)
 
 ### MatchDetail
-- Purpose: Deep dive into a single match’s prediction, including historical snapshots, H2H timeline, suspensions, agent session, and lineup.
+- Purpose: Deep dive into a single match's prediction, including historical snapshots, H2H timeline, suspensions, agent session, and lineup.
 - Data fetching: Concurrently fetches match and prediction; optional refresh and language parameters; additional data via separate endpoints.
 - State management: Match, prediction, lineup, H2H, prediction history, suspensions; loading state; expandable panels.
 - Layout and responsiveness: Hero with team flags and metadata, prediction bar, historical chart, H2H timeline, suspensions panel, agent session viewer, and lineup display.
@@ -275,26 +282,30 @@ Interval --> Render
 - [TeamDetail.jsx:82-392](file://frontend/src/pages/TeamDetail.jsx#L82-L392)
 
 ### Predictions
-- Purpose: Consolidated view of predictions vs actual outcomes with scoring methodology and accuracy stats.
+- Purpose: Consolidated view of predictions vs actual outcomes with scoring methodology and accuracy stats, featuring enhanced KO filtering capabilities.
 - Data fetching: Loads group stage matches and accuracy stats concurrently.
 - State management: Filters (status, group), memoized filtered and grouped lists, loading state.
 - Layout and responsiveness: Hero banner, stats grid, scoring methodology card, filter bar, grouped-by-date match cards.
 - Navigation: Links to match detail pages; programmatic navigation to team pages from match rows.
 - Lifecycle: useEffect triggers initial load on mount.
 - Error handling: Loading spinner; empty state message when no predictions.
-- Filtering logic: Status and group filters; grouping by scheduled date.
+- Filtering logic: Enhanced status and group filters with dedicated KO (knockout) filter option; grouping by scheduled date.
+
+**Updated** Enhanced with new KO (knockout) filter functionality that allows users to view only knockout stage matches alongside the existing status and group filters.
 
 ```mermaid
 flowchart TD
-Start(["Mount"]) --> Load["Promise.all(getMatches({stage: 'GROUP'}), getAccuracy())"]
+Start(["Mount"]) --> Load["Promise.all(getMatches({}), getAccuracy())"]
 Load --> Filter["Apply status + group filters"]
-Filter --> Group["Group by scheduled_date"]
+Filter --> KOFilter["Apply KO filter (if selected)"]
+KOFilter --> Group["Group by scheduled_date"]
 Group --> Render["Render cards"]
 ```
 
 **Diagram sources**
 - [Predictions.jsx:290-298](file://frontend/src/pages/Predictions.jsx#L290-L298)
 - [Predictions.jsx:300-321](file://frontend/src/pages/Predictions.jsx#L300-L321)
+- [Predictions.jsx:310-318](file://frontend/src/pages/Predictions.jsx#L310-L318)
 
 **Section sources**
 - [Predictions.jsx:277-514](file://frontend/src/pages/Predictions.jsx#L277-L514)
@@ -358,10 +369,11 @@ Pred --> Client
 - Missing data: Pages check for presence of required data (e.g., match existence in MatchDetail) and display appropriate messages.
 - Language switching: MatchDetail adjusts prediction language via query parameters; ensure lang is passed correctly.
 - Route mismatches: App.jsx includes legacy redirects for older paths to ensure smooth navigation.
+- KO filter issues: The KO filter uses the absence of group_code field to identify knockout matches; ensure backend properly handles this distinction.
 
 **Section sources**
 - [MatchDetail.jsx:739-759](file://frontend/src/pages/MatchDetail.jsx#L739-L759)
 - [App.jsx:269-275](file://frontend/src/App.jsx#L269-L275)
 
 ## Conclusion
-The page components are structured around a clean separation of concerns: each page encapsulates its own data fetching, state management, and rendering logic while leveraging shared components and a centralized API client. The routing integrates seamlessly with navigation patterns, and the design emphasizes responsiveness and accessibility through thoughtful loading states and layout choices.
+The page components are structured around a clean separation of concerns: each page encapsulates its own data fetching, state management, and rendering logic while leveraging shared components and a centralized API client. The routing integrates seamlessly with navigation patterns, and the design emphasizes responsiveness and accessibility through thoughtful loading states and layout choices. The Predictions page now features enhanced filtering capabilities with the new KO (knockout) filter functionality, providing users with more granular control over match viewing preferences.

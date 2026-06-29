@@ -631,6 +631,42 @@ cron.schedule('0 0-12 * * *',   runPredictionCron, { timezone: 'Asia/Singapore' 
 cron.schedule('0 14,16,18 * * *', runPredictionCron, { timezone: 'Asia/Singapore' }); // 2pm, 4pm, 6pm SGT
 cron.schedule('30 20,21,22 * * *', runPredictionCron, { timezone: 'Asia/Singapore' }); // 8:30pm, 9:30pm, 10:30pm SGT
 
+// Fetch lineups for matches within 2 hours of kickoff, every 15 minutes
+async function runLineupCron() {
+  const now = new Date();
+  if (now >= new Date('2026-07-23T00:00:00Z')) return;
+
+  const db = getDb();
+  const matches = db.prepare(`
+    SELECT id, scheduled_date, scheduled_time FROM matches
+    WHERE status = 'SCHEDULED' AND home_team IS NOT NULL AND away_team IS NOT NULL
+    ORDER BY scheduled_date, scheduled_time
+  `).all();
+
+  const upcoming = matches.filter(m => {
+    const timeStr = m.scheduled_time ? `T${m.scheduled_time}:00Z` : 'T18:00:00Z';
+    const ko = new Date(m.scheduled_date + timeStr);
+    const hoursUntil = (ko - now) / 3600000;
+    return hoursUntil >= 0 && hoursUntil <= 2;
+  });
+
+  if (upcoming.length === 0) return;
+  console.log(`[cron] lineup run: ${upcoming.length} match(es) within 2h of KO`);
+
+  for (const m of upcoming) {
+    try {
+      const result = await fetchLineup(m.id);
+      if (result?.available) {
+        console.log(`[cron] lineup fetched for ${m.id} (${result.source})`);
+      }
+    } catch (e) {
+      console.error(`[cron] lineup ${m.id} failed:`, e.message);
+    }
+  }
+}
+
+cron.schedule('*/15 * * * *', runLineupCron);
+
 // Serve React frontend in production
 const frontendDist = path.join(__dirname, '../frontend/dist');
 app.use(express.static(frontendDist));
