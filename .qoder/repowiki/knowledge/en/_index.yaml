@@ -3,11 +3,11 @@ schema_version: 1
 locale: en-US
 branch: master
 nodes_managed: true
-exported_at: "2026-06-29T11:55:12Z"
+exported_at: "2026-06-30T01:22:39Z"
 modules:
     "":
-        dir_name: WC2026 Qwen Prediction Platform
-        title: WC2026 Qwen Prediction Platform
+        dir_name: AI-Driven World Cup Prediction Platform
+        title: AI-Driven World Cup Prediction Platform
         scope:
             - README.md
             - AGENTS.md

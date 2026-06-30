@@ -10,6 +10,13 @@
 - [bracketService.js](file://backend/services/bracketService.js)
 </cite>
 
+## Update Summary
+**Changes Made**
+- Updated the lineup service source priority order to include Google-based and Sofascore scraping functions
+- Enhanced the detailed component analysis to reflect the new Google-based scraping and Sofascore scraping capabilities
+- Updated the source priority order from 1. API → 2. ESPN → 3. BBC to 1. API → 2. ESPN → 3. Sofascore → 4. Google
+- Added documentation for the new Google multi-source search and Sofascore structured data extraction capabilities
+
 ## Table of Contents
 1. [Introduction](#introduction)
 2. [Project Structure](#project-structure)
@@ -22,14 +29,14 @@
 9. [Conclusion](#conclusion)
 
 ## Introduction
-This document provides comprehensive API documentation for the system synchronization endpoints, focusing on the manual synchronization endpoint POST /api/sync and the automated synchronization mechanisms. It explains how live match results are synchronized from external data sources, how real-time result updates trigger prediction regeneration and lineup fetching, and how caching and cache invalidation work throughout the system. The documentation also covers the cron job schedules for live results synchronization, prediction regeneration for upcoming matches, and lineup fetching within two hours of kickoff.
+This document provides comprehensive API documentation for the system synchronization endpoints, focusing on the manual synchronization endpoint POST /api/sync and the automated synchronization mechanisms. It explains how live match results are synchronized from external data sources, how real-time result updates trigger prediction regeneration and lineup fetching, and how caching and cache invalidation work throughout the system. The documentation also covers the cron job schedules for live results synchronization, prediction regeneration for upcoming matches, and lineup fetching for matches within 2 hours of kickoff.
 
 ## Project Structure
 The synchronization functionality is implemented primarily in the backend server and several service modules:
 - The Express server exposes the POST /api/sync endpoint and defines cron jobs for automated synchronization.
 - The data service integrates with external APIs (football-data.org) and handles live result synchronization.
 - The analysis service records match results and triggers downstream analytics and cache invalidation.
-- The lineup service manages lineup retrieval and computation for matches within two hours of kickoff.
+- The lineup service manages lineup retrieval and computation for matches within two hours of kickoff, utilizing multiple scraping sources.
 - The database module defines the schema and caching tables used by the synchronization system.
 - The bracket service maintains simulation cache and invalidates it when match results change.
 
@@ -47,13 +54,18 @@ CronJobs --> LiveSync["Live Results Sync<br/>*/5 * * * *"]
 CronJobs --> PredictionRegen["Prediction Regeneration<br/>Hourly SGT"]
 CronJobs --> LineupFetch["Lineup Fetch<br/>*/15 * * * *"]
 LineupFetch --> LineupService["Lineup Service<br/>lineupService.js"]
+LineupService --> GoogleScrape["Google Multi-Source<br/>scrapeLineupGoogle"]
+LineupService --> SofascoreScrape["Sofascore Structured Data<br/>scrapeLineupSofascore"]
+LineupService --> ESPNScrape["ESPN Web Scraping<br/>scrapeLineupESPN"]
 ```
 
 **Diagram sources**
 - [server.js:573-582](file://backend/server.js#L573-L582)
 - [dataService.js:514-599](file://backend/services/dataService.js#L514-L599)
 - [analysisService.js:76-218](file://backend/services/analysisService.js#L76-L218)
-- [lineupService.js:221-316](file://backend/services/lineupService.js#L221-L316)
+- [lineupService.js:157-209](file://backend/services/lineupService.js#L157-L209)
+- [lineupService.js:211-290](file://backend/services/lineupService.js#L211-L290)
+- [lineupService.js:115-155](file://backend/services/lineupService.js#L115-L155)
 - [db.js:51-208](file://backend/database/db.js#L51-L208)
 - [bracketService.js:711-713](file://backend/services/bracketService.js#L711-L713)
 
@@ -61,7 +73,9 @@ LineupFetch --> LineupService["Lineup Service<br/>lineupService.js"]
 - [server.js:573-582](file://backend/server.js#L573-L582)
 - [dataService.js:514-599](file://backend/services/dataService.js#L514-L599)
 - [analysisService.js:76-218](file://backend/services/analysisService.js#L76-L218)
-- [lineupService.js:221-316](file://backend/services/lineupService.js#L221-L316)
+- [lineupService.js:157-209](file://backend/services/lineupService.js#L157-L209)
+- [lineupService.js:211-290](file://backend/services/lineupService.js#L211-L290)
+- [lineupService.js:115-155](file://backend/services/lineupService.js#L115-L155)
 - [db.js:51-208](file://backend/database/db.js#L51-L208)
 - [bracketService.js:711-713](file://backend/services/bracketService.js#L711-L713)
 
@@ -130,7 +144,7 @@ This section documents the synchronization endpoint and the automated synchroniz
 
 **Section sources**
 - [server.js:633-674](file://backend/server.js#L633-L674)
-- [lineupService.js:221-316](file://backend/services/lineupService.js#L221-L316)
+- [lineupService.js:355-463](file://backend/services/lineupService.js#L355-L463)
 
 ## Architecture Overview
 The synchronization architecture integrates external data sources, local caching, and downstream processing. The following diagram illustrates the end-to-end flow for manual and automated synchronization.
@@ -249,18 +263,43 @@ Analysis-->>Sync : {matchId, result, analysis}
 **Section sources**
 - [analysisService.js:76-218](file://backend/services/analysisService.js#L76-L218)
 
-### Lineup Service: Lineup Retrieval and Prediction Impact
-The lineup service retrieves confirmed starting lineups within two hours of kickoff and computes their impact on match outcomes.
+### Lineup Service: Enhanced Multi-Source Lineup Retrieval and Prediction Impact
+The lineup service retrieves confirmed starting lineups within two hours of kickoff using an enhanced multi-source approach with Google-based and Sofascore scraping capabilities.
 
-- Retrieval Sources:
-  - Attempts to fetch lineups from the external API first, then falls back to web scraping.
-- Availability Logic:
-  - Only available within two hours of kickoff; otherwise returns a reason indicating when to check back.
-- Strength Computation:
-  - Computes a normalized strength score for each team based on player positions and ratings.
-- Prediction Impact:
-  - Converts lineup strength differences into probability adjustments for home/away wins.
-  - Provides key absence detection by comparing current starters to recent patterns.
+#### Source Priority Order
+The lineup service attempts to retrieve lineups from the following sources in priority order:
+1. **football-data.org API** - Direct API access with structured lineup data
+2. **ESPN Web Scraping** - Traditional ESPN match page scraping
+3. **Sofascore Structured Data Extraction** - Modern SEO-rendered HTML with structured data parsing
+4. **Google Multi-Source Search** - Comprehensive Google search across multiple football websites
+
+#### Enhanced Scraping Capabilities
+
+**Google Multi-Source Search (`scrapeLineupGoogle`)**
+- Searches across multiple football websites using Google Custom Search
+- Extracts lineup data from Google's featured snippets and knowledge panels
+- Identifies formation patterns and player names from structured data
+- Handles rich results and knowledge graph information
+
+**Sofascore Structured Data Extraction (`scrapeLineupSofascore`)**
+- Utilizes Sofascore's SEO-rendered HTML with structured data
+- Parses application/ld+json script tags for performer member data
+- Extracts player information including names, positions, and shirt numbers
+- Provides fallback text parsing for player names near formation information
+
+**ESPN Web Scraping (`scrapeLineupESPN`)**
+- Traditional ESPN match page scraping with Google search integration
+- Extracts lineup data from ESPN's standardized lineup__list structure
+- Handles player display names and positions from lineup__displayName and lineup__pos elements
+
+#### Availability Logic
+- Only available within two hours of kickoff; otherwise returns a reason indicating when to check back.
+- Maintains comprehensive caching of retrieved lineups to minimize external requests.
+
+#### Strength Computation and Prediction Impact
+- Computes a normalized strength score for each team based on player positions and ratings.
+- Converts lineup strength differences into probability adjustments for home/away wins.
+- Provides key absence detection by comparing current starters to recent patterns.
 
 ```mermaid
 flowchart TD
@@ -270,23 +309,36 @@ CacheHit --> |Yes| BuildResult["Build Result from Cache"]
 CacheHit --> |No| LoadMatch["Load Match Details"]
 LoadMatch --> CheckTime{"Within 2 Hours of KO?"}
 CheckTime --> |No| NotAvailable["Return Not Available"]
-CheckTime --> |Yes| TrySources["Try Sources in Order"]
+CheckTime --> |Yes| TrySources["Try Sources in Order:<br/>1. API → 2. ESPN → 3. Sofascore → 4. Google"]
 TrySources --> APISuccess{"API Success?"}
 APISuccess --> |Yes| SaveAPI["Save to Cache"]
-APISuccess --> |No| ScrapingSuccess{"Scrape Success?"}
-ScrapingSuccess --> |Yes| SaveScrape["Save to Cache"]
-ScrapingSuccess --> |No| NotAvailable
+APISuccess --> |No| ESPNSuccess{"ESPN Success?"}
+ESPNSuccess --> |Yes| SaveESPN["Save to Cache"]
+ESPNSuccess --> |No| SofascoreSuccess{"Sofascore Success?"}
+SofascoreSuccess --> |Yes| SaveSofascore["Save to Cache"]
+SofascoreSuccess --> |No| GoogleSuccess{"Google Success?"}
+GoogleSuccess --> |Yes| SaveGoogle["Save to Cache"]
+GoogleSuccess --> |No| NotAvailable
 SaveAPI --> ComputeStrength["Compute Strength Scores"]
-SaveScrape --> ComputeStrength
+SaveESPN --> ComputeStrength
+SaveSofascore --> ComputeStrength
+SaveGoogle --> ComputeStrength
 ComputeStrength --> BuildResult
 BuildResult --> Done(["Return Lineup Result"])
 ```
 
 **Diagram sources**
-- [lineupService.js:221-316](file://backend/services/lineupService.js#L221-L316)
+- [lineupService.js:355-463](file://backend/services/lineupService.js#L355-L463)
+- [lineupService.js:157-209](file://backend/services/lineupService.js#L157-L209)
+- [lineupService.js:211-290](file://backend/services/lineupService.js#L211-L290)
+- [lineupService.js:115-155](file://backend/services/lineupService.js#L115-L155)
 
 **Section sources**
-- [lineupService.js:221-316](file://backend/services/lineupService.js#L221-L316)
+- [lineupService.js:8-39](file://backend/services/lineupService.js#L8-L39)
+- [lineupService.js:157-209](file://backend/services/lineupService.js#L157-L209)
+- [lineupService.js:211-290](file://backend/services/lineupService.js#L211-L290)
+- [lineupService.js:115-155](file://backend/services/lineupService.js#L115-L155)
+- [lineupService.js:355-463](file://backend/services/lineupService.js#L355-L463)
 
 ### Bracket Service: Simulation Cache Invalidation
 The bracket service maintains a simulation cache for tournament simulations and invalidates it when match results change, ensuring simulations reflect the latest outcomes.
@@ -311,6 +363,9 @@ Server --> BracketService["bracketService.js"]
 DataService --> AnalysisService
 AnalysisService --> BracketService
 LineupService --> AnalysisService
+LineupService --> GoogleScrape["Google Multi-Source<br/>scrapeLineupGoogle"]
+LineupService --> SofascoreScrape["Sofascore Structured Data<br/>scrapeLineupSofascore"]
+LineupService --> ESPNScrape["ESPN Web Scraping<br/>scrapeLineupESPN"]
 DB["db.js"] --> DataService
 DB --> AnalysisService
 DB --> LineupService
@@ -321,6 +376,9 @@ DB --> LineupService
 - [dataService.js:1-21](file://backend/services/dataService.js#L1-L21)
 - [analysisService.js:1-16](file://backend/services/analysisService.js#L1-L16)
 - [lineupService.js:1-43](file://backend/services/lineupService.js#L1-L43)
+- [lineupService.js:157-209](file://backend/services/lineupService.js#L157-L209)
+- [lineupService.js:211-290](file://backend/services/lineupService.js#L211-L290)
+- [lineupService.js:115-155](file://backend/services/lineupService.js#L115-L155)
 - [db.js:1-252](file://backend/database/db.js#L1-L252)
 
 **Section sources**
@@ -328,6 +386,9 @@ DB --> LineupService
 - [dataService.js:1-21](file://backend/services/dataService.js#L1-L21)
 - [analysisService.js:1-16](file://backend/services/analysisService.js#L1-L16)
 - [lineupService.js:1-43](file://backend/services/lineupService.js#L1-L43)
+- [lineupService.js:157-209](file://backend/services/lineupService.js#L157-L209)
+- [lineupService.js:211-290](file://backend/services/lineupService.js#L211-L290)
+- [lineupService.js:115-155](file://backend/services/lineupService.js#L115-L155)
 - [db.js:1-252](file://backend/database/db.js#L1-L252)
 
 ## Performance Considerations
@@ -335,6 +396,7 @@ DB --> LineupService
 - Network Latency: External API calls and web scraping introduce latency. The system mitigates this by caching results for form, head-to-head records, and web intelligence.
 - Database Concurrency: The database uses appropriate pragmas and migrations to handle concurrent access and evolving schema.
 - Prediction Regeneration Cooldown: The prediction regeneration cron avoids re-processing matches that have been recently updated, preventing unnecessary recomputation.
+- Enhanced Scraping Efficiency: The new Google-based and Sofascore scraping functions provide improved reliability and coverage compared to traditional ESPN-only approaches.
 
 ## Troubleshooting Guide
 Common issues and resolutions:
@@ -357,7 +419,13 @@ Common issues and resolutions:
 - Lineup Not Available:
   - Symptom: Lineup service indicates lineup not yet announced or retrievable.
   - Resolution: Check back closer to kickoff; ensure the match is within the two-hour window.
-  - Reference: [lineupService.js:256-262](file://backend/services/lineupService.js#L256-L262)
+  - Reference: [lineupService.js:391-397](file://backend/services/lineupService.js#L391-L397)
+
+- Enhanced Scraping Failures:
+  - Symptom: New Google-based and Sofascore scraping functions failing to retrieve lineups.
+  - Resolution: Verify network connectivity and Google Custom Search configuration; check for rate limiting on external services.
+  - Reference: [lineupService.js:157-209](file://backend/services/lineupService.js#L157-L209)
+  - Reference: [lineupService.js:211-290](file://backend/services/lineupService.js#L211-L290)
 
 - Prediction Regeneration Not Triggered:
   - Symptom: Predictions are not regenerated despite finished matches.
@@ -371,9 +439,19 @@ Common issues and resolutions:
 
 **Section sources**
 - [dataService.js:515-599](file://backend/services/dataService.js#L515-L599)
-- [lineupService.js:256-262](file://backend/services/lineupService.js#L256-L262)
+- [lineupService.js:391-397](file://backend/services/lineupService.js#L391-L397)
+- [lineupService.js:157-209](file://backend/services/lineupService.js#L157-L209)
+- [lineupService.js:211-290](file://backend/services/lineupService.js#L211-L290)
 - [server.js:596-628](file://backend/server.js#L596-L628)
 - [bracketService.js:711-713](file://backend/services/bracketService.js#L711-L713)
 
 ## Conclusion
-The system synchronization endpoints provide robust mechanisms for integrating live match data, updating results, and triggering downstream processes such as prediction regeneration and lineup fetching. The manual POST /api/sync endpoint offers immediate control, while automated cron jobs ensure continuous synchronization during the tournament. Proper caching and cache invalidation maintain data consistency and performance. By understanding the integration points and troubleshooting steps outlined above, operators can effectively manage synchronization and address common issues.
+The system synchronization endpoints provide robust mechanisms for integrating live match data, updating results, and triggering downstream processes such as prediction regeneration and lineup fetching. The manual POST /api/sync endpoint offers immediate control, while automated cron jobs ensure continuous synchronization during the tournament. 
+
+**Enhanced Lineup Service**: The recent additions of Google-based and Sofascore scraping functions significantly improve the reliability and coverage of lineup retrieval. The new multi-source approach prioritizes direct API access, traditional ESPN scraping, modern Sofascore structured data extraction, and comprehensive Google search across multiple football websites.
+
+**Improved Reliability**: These enhancements provide better fallback mechanisms when primary sources fail, ensuring that lineups can still be retrieved from alternative sources. The Google multi-source search leverages rich results and knowledge graphs, while Sofascore's structured data approach provides reliable player information from SEO-rendered HTML.
+
+**Performance Benefits**: The enhanced lineup service maintains efficient caching while expanding the range of available sources, reducing the likelihood of lineup unavailability and improving the overall robustness of the prediction system.
+
+By understanding the integration points, enhanced scraping capabilities, and troubleshooting steps outlined above, operators can effectively manage synchronization and address common issues with the improved lineup retrieval system.

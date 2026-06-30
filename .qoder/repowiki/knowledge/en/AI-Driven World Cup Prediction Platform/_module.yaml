@@ -1,6 +1,6 @@
 schema_version: 1
 module_path: ""
-title: WC2026 Qwen Prediction Platform
+title: AI-Driven World Cup Prediction Platform
 scope:
     - README.md
     - AGENTS.md

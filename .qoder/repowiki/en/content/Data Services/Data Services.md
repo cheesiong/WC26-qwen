@@ -13,7 +13,15 @@
 - [server.js](file://backend/server.js)
 - [qwenClient.js](file://backend/services/qwenClient.js)
 - [oddsService.js](file://backend/services/oddsService.js)
+- [lineupAgent.js](file://backend/services/agents/lineupAgent.js)
 </cite>
+
+## Update Summary
+**Changes Made**
+- Enhanced lineup service documentation to include new Google multi-source scraping capabilities
+- Added Sofascore structured data extraction functionality
+- Updated the multi-source fetching architecture documentation
+- Expanded lineup tracking and strength modeling documentation to reflect new capabilities
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -31,7 +39,7 @@
 This document describes the data services layer responsible for external data integration and processing in the World Cup 2026 prediction platform. It covers:
 - External data sources: football-data.org API integration, web scraping for injuries and lineups, and real-time live result synchronization
 - Historical head-to-head analysis using a 47k-match dataset
-- Lineup tracking and player availability modeling
+- Lineup tracking and player availability modeling with enhanced multi-source scraping capabilities
 - Suspension tracking for yellow/red cards
 - Data processing pipeline: validation, transformation, caching, error handling
 - Rate limiting, retry mechanisms, and fallback strategies
@@ -54,10 +62,11 @@ DB["db.js"]
 QW["qwenClient.js"]
 OD["oddsService.js"]
 SVR["server.js"]
+LA["lineupAgent.js"]
 end
 subgraph "External"
 API["football-data.org API"]
-WEB["Web Scrapers<br/>ESPN, BBC, Google News"]
+WEB["Web Scrapers<br/>ESPN, BBC, Google News, Sofascore"]
 LLM["Qwen LLM"]
 end
 subgraph "Frontend"
@@ -83,12 +92,13 @@ PE --> LS
 AS --> PE
 AS --> DB
 QW --> LLM
+LA --> LS
 ```
 
 **Diagram sources**
 - [dataService.js:1-602](file://backend/services/dataService.js#L1-L602)
 - [h2hService.js:1-315](file://backend/services/h2hService.js#L1-L315)
-- [lineupService.js:1-425](file://backend/services/lineupService.js#L1-L425)
+- [lineupService.js:1-572](file://backend/services/lineupService.js#L1-L572)
 - [suspensionService.js:1-152](file://backend/services/suspensionService.js#L1-L152)
 - [predictionEngine.js:1-1046](file://backend/services/predictionEngine.js#L1-L1046)
 - [analysisService.js:1-422](file://backend/services/analysisService.js#L1-L422)
@@ -96,11 +106,12 @@ QW --> LLM
 - [qwenClient.js:86-122](file://backend/services/qwenClient.js#L86-L122)
 - [oddsService.js:1-156](file://backend/services/oddsService.js#L1-L156)
 - [server.js:1-41](file://backend/server.js#L1-L41)
+- [lineupAgent.js:1-118](file://backend/services/agents/lineupAgent.js#L1-L118)
 
 **Section sources**
 - [dataService.js:1-602](file://backend/services/dataService.js#L1-L602)
 - [h2hService.js:1-315](file://backend/services/h2hService.js#L1-L315)
-- [lineupService.js:1-425](file://backend/services/lineupService.js#L1-L425)
+- [lineupService.js:1-572](file://backend/services/lineupService.js#L1-L572)
 - [suspensionService.js:1-152](file://backend/services/suspensionService.js#L1-L152)
 - [predictionEngine.js:1-1046](file://backend/services/predictionEngine.js#L1-L1046)
 - [analysisService.js:1-422](file://backend/services/analysisService.js#L1-L422)
@@ -112,7 +123,7 @@ QW --> LLM
 ## Core Components
 - dataService: Integrates football-data.org API and web scraping for team form, injuries, news, and live result synchronization. Implements caching and fallback strategies.
 - h2hService: Loads and maintains a 47k-match historical dataset, computes competition-weighted head-to-head records, and converts them to probabilities.
-- lineupService: Fetches confirmed starting XIs from API or web scrapers, computes lineup strength, detects key absences, and translates lineup impact into probability adjustments.
+- lineupService: Fetches confirmed starting XIs from multiple sources including API, ESPN, BBC, Google multi-source search, and Sofascore structured data extraction. Computes lineup strength, detects key absences, and translates lineup impact into probability adjustments.
 - suspensionService: Tracks yellow/red card accumulations and suspensions across the tournament, with stage-aware thresholds and watch lists.
 - predictionEngine: Orchestrates the prediction pipeline, blending backbone Poisson model with signals from dataService, h2hService, and lineupService.
 - analysisService: Handles post-match analysis, updating standings, ELO/ratings, and model performance metrics.
@@ -122,7 +133,7 @@ QW --> LLM
 **Section sources**
 - [dataService.js:1-602](file://backend/services/dataService.js#L1-L602)
 - [h2hService.js:1-315](file://backend/services/h2hService.js#L1-L315)
-- [lineupService.js:1-425](file://backend/services/lineupService.js#L1-L425)
+- [lineupService.js:1-572](file://backend/services/lineupService.js#L1-L572)
 - [suspensionService.js:1-152](file://backend/services/suspensionService.js#L1-L152)
 - [predictionEngine.js:1-1046](file://backend/services/predictionEngine.js#L1-L1046)
 - [analysisService.js:1-422](file://backend/services/analysisService.js#L1-L422)
@@ -145,6 +156,7 @@ participant API as "Express server.js"
 participant DS as "dataService.js"
 participant H2H as "h2hService.js"
 participant LIN as "lineupService.js"
+participant LA as "lineupAgent.js"
 participant PE as "predictionEngine.js"
 participant DB as "db.js"
 FE->>API : GET /api/matches/ : id/prediction
@@ -156,7 +168,9 @@ LIN->>DB : read/write lineups
 DS->>DB : read/write web_intel_cache
 H2H->>DB : read h2h_results
 PE->>DB : write predictions
-API-->>FE : prediction response
+API->>LA : fetchLineup() (multi-agent)
+LA->>LIN : fetchLineup()
+LIN->>DB : read/write lineups
 ```
 
 **Diagram sources**
@@ -165,6 +179,7 @@ API-->>FE : prediction response
 - [dataService.js:68-133](file://backend/services/dataService.js#L68-L133)
 - [h2hService.js:192-266](file://backend/services/h2hService.js#L192-L266)
 - [lineupService.js:221-316](file://backend/services/lineupService.js#L221-L316)
+- [lineupAgent.js:44-51](file://backend/services/agents/lineupAgent.js#L44-L51)
 - [db.js:147-157](file://backend/database/db.js#L147-L157)
 
 ## Detailed Component Analysis
@@ -246,18 +261,27 @@ H2H-->>Caller : {matches, summary}
 - [h2hService.js:192-266](file://backend/services/h2hService.js#L192-L266)
 - [h2hService.js:272-312](file://backend/services/h2hService.js#L272-L312)
 
-### lineupService: Lineup Tracking and Strength Modeling
+### lineupService: Enhanced Lineup Tracking and Strength Modeling
+**Updated** Enhanced with new Google multi-source scraping capabilities and Sofascore structured data extraction
+
 Responsibilities:
-- Fetch confirmed lineups from API or web scrapers
+- Fetch confirmed lineups from multiple sources: API, ESPN, BBC, Google multi-source search, and Sofascore structured data extraction
 - Compute lineup strength scores using position weights and ELO-derived ratings
 - Detect key absences by comparing current starters to recent patterns
 - Translate lineup impact into probability adjustments for the prediction engine
+
+Enhanced multi-source architecture:
+- Priority order: API → ESPN → Sofascore → Google multi-source → BBC
+- Google multi-source scraping searches across multiple football websites for lineup data
+- Sofascore structured data extraction parses SEO-rendered HTML and application/ld+json structured data
+- Robust fallback mechanisms ensure lineup data availability even for less-covered matches
 
 Key features:
 - Position importance weights summing to 10
 - Strength normalization to 0–10 scale
 - Absence detection via frequency analysis across previous lineups
 - Manual lineup submission capability
+- Multi-source redundancy for improved reliability
 
 ```mermaid
 flowchart TD
@@ -270,16 +294,22 @@ TimeCheck --> |Yes| TryAPI["Try API"]
 TryAPI --> |Success| Compute["Compute strength scores"]
 TryAPI --> |Fail| TryESPN["Scrape ESPN"]
 TryESPN --> |Success| Compute
-TryESPN --> |Fail| ReturnUnavailable
+TryESPN --> |Fail| TrySofascore["Scrape Sofascore"]
+TrySofascore --> |Success| Compute
+TrySofascore --> |Fail| TryGoogle["Google multi-source search"]
+TryGoogle --> |Success| Compute
+TryGoogle --> |Fail| TryBBC["Scrape BBC"]
+TryBBC --> |Success| Compute
+TryBBC --> |Fail| ReturnUnavailable
 Compute --> Store["INSERT OR REPLACE lineups"]
 Store --> Build
 Build --> Return["Return lineup result"]
 ```
 
 **Diagram sources**
-- [lineupService.js:221-316](file://backend/services/lineupService.js#L221-L316)
-- [lineupService.js:158-183](file://backend/services/lineupService.js#L158-L183)
-- [lineupService.js:190-218](file://backend/services/lineupService.js#L190-L218)
+- [lineupService.js:356-463](file://backend/services/lineupService.js#L356-L463)
+- [lineupService.js:416-426](file://backend/services/lineupService.js#L416-L426)
+- [lineupService.js:422-426](file://backend/services/lineupService.js#L422-L426)
 
 **Section sources**
 - [lineupService.js:46-61](file://backend/services/lineupService.js#L46-L61)
@@ -287,6 +317,8 @@ Build --> Return["Return lineup result"]
 - [lineupService.js:190-218](file://backend/services/lineupService.js#L190-L218)
 - [lineupService.js:221-316](file://backend/services/lineupService.js#L221-L316)
 - [lineupService.js:399-422](file://backend/services/lineupService.js#L399-L422)
+- [lineupService.js:416-426](file://backend/services/lineupService.js#L416-L426)
+- [lineupService.js:422-426](file://backend/services/lineupService.js#L422-L426)
 
 ### suspensionService: Yellow/Red Card Tracking
 Responsibilities:
@@ -398,8 +430,7 @@ AS --> DB
 - Database optimizations: WAL mode, foreign keys, and appropriate indexes improve concurrency and query performance.
 - Backoff and retries: LLM calls implement exponential backoff to handle transient failures gracefully.
 - Lightweight transformations: Position weights and strength scoring are computed in-process for quick turnaround.
-
-[No sources needed since this section provides general guidance]
+- Multi-source redundancy: Enhanced lineup service provides multiple fallback options to ensure data availability.
 
 ## Troubleshooting Guide
 Common issues and remedies:
@@ -408,6 +439,7 @@ Common issues and remedies:
 - LLM parsing errors: Anti-hallucination filtering removes invalid claims; fallback to regex extraction occurs automatically.
 - Cache staleness: TTL checks ensure fresh data is fetched when cached entries expire.
 - Database contention: Lock handling and transaction blocks prevent corruption during seeding and updates.
+- Google search limitations: Multi-source Google scraping may fail if search results are not available or structured data is missing.
 
 **Section sources**
 - [dataService.js:514-518](file://backend/services/dataService.js#L514-L518)
@@ -417,9 +449,7 @@ Common issues and remedies:
 - [db.js:10-21](file://backend/database/db.js#L10-L21)
 
 ## Conclusion
-The data services layer provides a robust, resilient pipeline for integrating external data, transforming it into actionable signals, and feeding them into the prediction engine. Through careful caching, fallback strategies, and anti-hallucination validation, it ensures reliable predictions even under adverse conditions. The modular design enables easy maintenance and extension as new data sources and signals are introduced.
-
-[No sources needed since this section summarizes without analyzing specific files]
+The data services layer provides a robust, resilient pipeline for integrating external data, transforming it into actionable signals, and feeding them into the prediction engine. Through careful caching, fallback strategies, and anti-hallucination validation, it ensures reliable predictions even under adverse conditions. The enhanced lineup service with multi-source scraping capabilities significantly improves data availability and reliability. The modular design enables easy maintenance and extension as new data sources and signals are introduced.
 
 ## Appendices
 
@@ -427,7 +457,7 @@ The data services layer provides a robust, resilient pipeline for integrating ex
 - Team form: cached for 12 hours; refreshed on demand or via periodic jobs
 - Head-to-head: cached for 24 hours; static dataset seeded once and reused thereafter
 - Pre-match intelligence: cached for 4 hours; refreshed frequently due to breaking news
-- Lineups: cached per match; available within 60–75 minutes before kickoff
+- Lineups: cached per match; available within 60–75 minutes before kickoff with multi-source redundancy
 - Suspensions: updated in real-time via manual entries and match events
 
 **Section sources**
@@ -439,8 +469,28 @@ The data services layer provides a robust, resilient pipeline for integrating ex
 - Backend endpoints expose predictions, H2H, lineups, suspensions, and analytics
 - Frontend client consumes these endpoints to render match details, predictions, and tournament insights
 - Multi-agent orchestration can be toggled via environment variables and model configuration
+- LineupAgent provides specialized tactical analysis when confirmed lineups are available
 
 **Section sources**
 - [server.js:1-41](file://backend/server.js#L1-L41)
 - [client.js:19-50](file://frontend/src/api/client.js#L19-L50)
 - [predictionEngine.js:56-61](file://backend/services/predictionEngine.js#L56-L61)
+- [lineupAgent.js:110-118](file://backend/services/agents/lineupAgent.js#L110-L118)
+
+### Enhanced Lineup Service Architecture
+**Updated** New multi-source scraping capabilities
+
+The lineup service now implements a sophisticated multi-source architecture:
+
+1. **Primary Source**: football-data.org API (lineup field)
+2. **Traditional Sources**: ESPN match page scrape, BBC Sport scrape
+3. **Enhanced Sources**: 
+   - Google multi-source search for structured data extraction
+   - Sofascore structured data extraction from SEO-rendered HTML
+4. **Fallback Mechanism**: Automatic switching between sources based on availability and reliability
+
+**Section sources**
+- [lineupService.js:8-39](file://backend/services/lineupService.js#L8-L39)
+- [lineupService.js:158-209](file://backend/services/lineupService.js#L158-L209)
+- [lineupService.js:212-290](file://backend/services/lineupService.js#L212-L290)
+- [lineupService.js:416-426](file://backend/services/lineupService.js#L416-L426)

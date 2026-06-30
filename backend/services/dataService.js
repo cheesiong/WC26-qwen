@@ -572,14 +572,43 @@ async function syncLiveResults() {
     }
 
     for (const { m, found } of toUpdate) {
-      const apiHome = m.score.fullTime.home;
-      const apiAway = m.score.fullTime.away;
+      let apiHome = m.score.fullTime.home;
+      let apiAway = m.score.fullTime.away;
       if (apiHome == null || apiAway == null) {
         console.warn(`syncLiveResults: null scores for match ${found.row.id} — skipping`);
         continue;
       }
-      const apiHomePens = m.score.penalties?.home ?? null;
-      const apiAwayPens = m.score.penalties?.away ?? null;
+      let apiHomePens = m.score.penalties?.home ?? null;
+      let apiAwayPens = m.score.penalties?.away ?? null;
+
+      // Sanity check: detect if API returned penalty scores in fullTime field.
+      // Typical FT scores are 0-5 per team. If both scores are >= 3 AND penalty
+      // scores exist, it's likely the API mixed them up (e.g. 5-6 instead of 1-1).
+      // In this case, swap: use penalties as penalties, and try to infer FT from
+      // the match context or set to a draw.
+      if (apiHome >= 3 && apiAway >= 3 && apiHomePens != null && apiAwayPens != null) {
+        console.warn(`syncLiveResults: ${found.row.id} FT scores (${apiHome}-${apiAway}) look like penalties. ` +
+          `Penalties exist (${apiHomePens}-${apiAwayPens}). Assuming FT was a draw or using context.`);
+        // If penalties exist and FT looks like pens, the API likely duplicated.
+        // We can't know the exact FT score, but we know it was a draw (since pens were needed).
+        // Use 0-0 as a safe default for draws that went to penalties, or check if
+        // the API has extraTime scores.
+        const apiHomeET = m.score.extraTime?.home ?? null;
+        const apiAwayET = m.score.extraTime?.away ?? null;
+        if (apiHomeET != null && apiAwayET != null) {
+          // Extra time exists - use it as FT (it includes ET goals)
+          apiHome = apiHomeET;
+          apiAway = apiAwayET;
+          console.log(`syncLiveResults: ${found.row.id} using extraTime scores: ${apiHome}-${apiAway}`);
+        } else {
+          // No extra time - assume it was a 0-0 draw that went to penalties
+          // (most common scenario for penalty shootouts)
+          apiHome = 0;
+          apiAway = 0;
+          console.log(`syncLiveResults: ${found.row.id} assuming 0-0 FT (draw went to penalties)`);
+        }
+      }
+
       const homeScore = found.reversed ? apiAway : apiHome;
       const awayScore = found.reversed ? apiHome : apiAway;
       const homePens  = found.reversed ? apiAwayPens : apiHomePens;

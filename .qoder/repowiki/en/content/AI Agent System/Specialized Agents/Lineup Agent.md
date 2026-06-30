@@ -10,6 +10,13 @@
 - [qwenClient.js](file://backend/services/qwenClient.js)
 </cite>
 
+## Update Summary
+**Changes Made**
+- Updated Lineup Service section to reflect new Google-based multi-source scraper (scrapeLineupGoogle)
+- Added Sofascore-specific scraper (scrapeLineupSofascore) to the data fetching pipeline
+- Enhanced fallback sources documentation with additional reliability improvements
+- Updated architecture diagrams to show the expanded scraping pipeline
+
 ## Table of Contents
 1. [Introduction](#introduction)
 2. [Project Structure](#project-structure)
@@ -27,6 +34,8 @@ The Lineup Agent is a specialized multi-agent component that analyzes confirmed 
 - Key player absences versus expected lineups
 - Formation matchups and tactical implications
 - Whether either team appears to be playing a weakened or rotated side
+
+**Updated** Enhanced with improved data reliability through expanded scraping sources including Google multi-source search and Sofascore integration.
 
 ## Project Structure
 The Lineup Agent integrates within the multi-agent prediction framework:
@@ -63,7 +72,7 @@ PE --> OA
 
 **Diagram sources**
 - [lineupAgent.js:1-118](file://backend/services/agents/lineupAgent.js#L1-L118)
-- [lineupService.js:1-425](file://backend/services/lineupService.js#L1-L425)
+- [lineupService.js:1-572](file://backend/services/lineupService.js#L1-L572)
 - [agentFramework.js:1-586](file://backend/services/agents/agentFramework.js#L1-L586)
 - [orchestratorAgent.js:1-502](file://backend/services/agents/orchestratorAgent.js#L1-L502)
 - [predictionEngine.js:1-1046](file://backend/services/predictionEngine.js#L1-L1046)
@@ -71,7 +80,7 @@ PE --> OA
 
 **Section sources**
 - [lineupAgent.js:1-118](file://backend/services/agents/lineupAgent.js#L1-L118)
-- [lineupService.js:1-425](file://backend/services/lineupService.js#L1-L425)
+- [lineupService.js:1-572](file://backend/services/lineupService.js#L1-L572)
 - [agentFramework.js:1-586](file://backend/services/agents/agentFramework.js#L1-L586)
 - [orchestratorAgent.js:1-502](file://backend/services/agents/orchestratorAgent.js#L1-L502)
 - [predictionEngine.js:1-1046](file://backend/services/predictionEngine.js#L1-L1046)
@@ -84,16 +93,18 @@ PE --> OA
 - Orchestrator: Coordinates multi-agent runs, manages agent tasks, conflict resolution, and final probability blending.
 - Prediction Engine: Integrates lineup signals into the broader prediction pipeline, weighting lineup data at 0.40 when available.
 
+**Updated** The Lineup Service now includes enhanced scraping capabilities with Google multi-source search and Sofascore integration for improved data reliability.
+
 **Section sources**
 - [lineupAgent.js:14-118](file://backend/services/agents/lineupAgent.js#L14-L118)
-- [lineupService.js:41-425](file://backend/services/lineupService.js#L41-L425)
+- [lineupService.js:41-572](file://backend/services/lineupService.js#L41-L572)
 - [agentFramework.js:208-586](file://backend/services/agents/agentFramework.js#L208-L586)
 - [orchestratorAgent.js:309-502](file://backend/services/agents/orchestratorAgent.js#L309-L502)
 - [predictionEngine.js:92-100](file://backend/services/predictionEngine.js#L92-L100)
 
 ## Architecture Overview
 The Lineup Agent participates in two prediction modes:
-- Single-agent mode: Uses the prediction engine’s unified pipeline with lineupToProbs conversion.
+- Single-agent mode: Uses the prediction engine's unified pipeline with lineupToProbs conversion.
 - Multi-agent mode: Operates within AgentSession orchestration, generating structured outputs with confidence, evidence, and weight recommendations.
 
 ```mermaid
@@ -122,7 +133,7 @@ OA->>PE : "blend finalOutputs -> finalProbs"
 **Diagram sources**
 - [orchestratorAgent.js:319-502](file://backend/services/agents/orchestratorAgent.js#L319-L502)
 - [lineupAgent.js:44-118](file://backend/services/agents/lineupAgent.js#L44-L118)
-- [lineupService.js:221-316](file://backend/services/lineupService.js#L221-L316)
+- [lineupService.js:221-463](file://backend/services/lineupService.js#L221-L463)
 - [agentFramework.js:211-586](file://backend/services/agents/agentFramework.js#L211-L586)
 - [qwenClient.js:53-101](file://backend/services/qwenClient.js#L53-L101)
 
@@ -162,7 +173,7 @@ LineupAgent --> LineupService : "uses"
 **Diagram sources**
 - [lineupAgent.js:110-118](file://backend/services/agents/lineupAgent.js#L110-L118)
 - [lineupAgent.js:44-107](file://backend/services/agents/lineupAgent.js#L44-L107)
-- [lineupService.js:221-425](file://backend/services/lineupService.js#L221-L425)
+- [lineupService.js:221-572](file://backend/services/lineupService.js#L221-L572)
 - [agentFramework.js:211-330](file://backend/services/agents/agentFramework.js#L211-L330)
 
 **Section sources**
@@ -171,10 +182,12 @@ LineupAgent --> LineupService : "uses"
 ### Lineup Service: Data Fetching and Computation
 The Lineup Service performs:
 - Availability checks (time proximity to kickoff)
-- Multi-source fetching (football-data.org API, ESPN scrape, manual submission)
+- Multi-source fetching (football-data.org API, ESPN scrape, Sofascore scrape, Google multi-source search)
 - Strength score computation using position weights and team ELO baselines
 - Key absence detection by comparing current starters to recent lineup patterns
 - Result construction with strength delta and impact scores
+
+**Updated** Enhanced with two new scraping sources: Google multi-source search for broader coverage and Sofascore integration for structured data extraction.
 
 ```mermaid
 flowchart TD
@@ -189,23 +202,77 @@ TryAPI --> APISuccess{"API success?"}
 APISuccess --> |No| TryESPN["Scrape ESPN"]
 APISuccess --> |Yes| ComputeScores["Compute strength scores"]
 TryESPN --> ESPNSuccess{"ESPN success?"}
-ESPNSuccess --> |No| ReturnUnavailable
-ESPNSuccess --> ComputeScores
-ComputeScores --> SaveDB["Save to DB"]
+ESPNSuccess --> |No| TrySofascore["Scrape Sofascore"]
+ESPNSuccess --> |Yes| SaveDB["Save to DB"]
+TrySofascore --> SofaSuccess{"Sofascore success?"}
+SofaSuccess --> |No| TryGoogle["Scrape Google multi-source"]
+SofaSuccess --> |Yes| SaveDB
+TryGoogle --> GoogleSuccess{"Google success?"}
+GoogleSuccess --> |No| ReturnUnavailable
+GoogleSuccess --> |Yes| SaveDB
+ComputeScores --> SaveDB
 SaveDB --> BuildResult
 BuildResult --> End(["Return structured lineup data"])
 ```
 
 **Diagram sources**
-- [lineupService.js:221-316](file://backend/services/lineupService.js#L221-L316)
-- [lineupService.js:318-362](file://backend/services/lineupService.js#L318-L362)
+- [lineupService.js:221-463](file://backend/services/lineupService.js#L221-L463)
+- [lineupService.js:465-509](file://backend/services/lineupService.js#L465-L509)
 
 **Section sources**
 - [lineupService.js:83-155](file://backend/services/lineupService.js#L83-L155)
 - [lineupService.js:157-183](file://backend/services/lineupService.js#L157-L183)
 - [lineupService.js:185-218](file://backend/services/lineupService.js#L185-L218)
-- [lineupService.js:221-316](file://backend/services/lineupService.js#L221-L316)
-- [lineupService.js:318-362](file://backend/services/lineupService.js#L318-L362)
+- [lineupService.js:221-463](file://backend/services/lineupService.js#L221-L463)
+- [lineupService.js:465-509](file://backend/services/lineupService.js#L465-L509)
+
+### Enhanced Scraping Pipeline
+
+**Updated** The Lineup Service now includes sophisticated scraping capabilities with multiple fallback sources:
+
+#### Google Multi-Source Scraper (`scrapeLineupGoogle`)
+- Searches across multiple football websites using Google Custom Search
+- Extracts formation patterns (e.g., "4-3-3", "4-4-2") from featured snippets
+- Parses structured data from Google's rich results and knowledge panels
+- Identifies player names from various text formats and patterns
+
+#### Sofascore Integration (`scrapeLineupSofascore`)
+- Uses Google search to locate Sofascore match pages
+- Extracts structured data from JSON-LD script tags for SEO optimization
+- Falls back to text parsing when structured data is unavailable
+- Filters player names using common word lists to improve accuracy
+
+```mermaid
+flowchart TD
+ScrapeStart["Scrape Lineup Sources"] --> API["football-data.org API"]
+API --> APISuccess{"Success?"}
+APISuccess --> |Yes| ProcessAPI["Process API data"]
+APISuccess --> |No| ESPN["ESPN Scrape"]
+ESPN --> ESPNSuccess{"Success?"}
+ESPNSuccess --> |Yes| ProcessESPN["Process ESPN data"]
+ESPNSuccess --> |No| Sofascore["Sofascore Scrape"]
+Sofascore --> SofaSuccess{"Success?"}
+SofaSuccess --> |Yes| ProcessSofascore["Process Sofascore data"]
+SofaSuccess --> |No| Google["Google Multi-Source"]
+Google --> GoogleSuccess{"Success?"}
+GoogleSuccess --> |Yes| ProcessGoogle["Process Google data"]
+GoogleSuccess --> |No| Fail["Return Unavailable"]
+ProcessAPI --> SaveDB["Save to Database"]
+ProcessESPN --> SaveDB
+ProcessSofascore --> SaveDB
+ProcessGoogle --> SaveDB
+SaveDB --> Result["Return Lineup Data"]
+```
+
+**Diagram sources**
+- [lineupService.js:157-209](file://backend/services/lineupService.js#L157-L209)
+- [lineupService.js:211-290](file://backend/services/lineupService.js#L211-L290)
+- [lineupService.js:416-426](file://backend/services/lineupService.js#L416-L426)
+
+**Section sources**
+- [lineupService.js:157-209](file://backend/services/lineupService.js#L157-L209)
+- [lineupService.js:211-290](file://backend/services/lineupService.js#L211-L290)
+- [lineupService.js:416-426](file://backend/services/lineupService.js#L416-L426)
 
 ### Agent Framework: Session Orchestration and Conflict Resolution
 The Agent Framework provides:
@@ -306,6 +373,9 @@ PE["PredictionEngine"] --> OA
 - Parallel orchestration: In multi-agent mode, agents run concurrently, reducing total prediction latency.
 - Weighted blending: The 0.40 weight ensures lineup signals dominate when available, while other signals remain influential.
 - Robust parsing: JSON extraction with sanitization and fallbacks minimizes parse errors and improves reliability.
+- Enhanced reliability: Multiple scraping sources with intelligent fallback mechanisms increase data availability and accuracy.
+
+**Updated** Improved data reliability through expanded scraping sources reduces the likelihood of lineup unavailability and provides more consistent data quality.
 
 ## Troubleshooting Guide
 Common issues and resolutions:
@@ -313,6 +383,9 @@ Common issues and resolutions:
 - JSON parse errors: AgentFramework applies fallback outputs with minimal confidence and flags.
 - LLM failures: AgentFramework retries once and falls back to default outputs.
 - Absence detection: If recent lineup patterns are insufficient, absence detection may be empty; verify DB entries.
+- Scraping failures: Enhanced fallback pipeline ensures multiple attempts across different sources before declaring failure.
+
+**Updated** Enhanced troubleshooting guidance for new scraping sources and improved fallback mechanisms.
 
 **Section sources**
 - [lineupAgent.js:64-66](file://backend/services/agents/lineupAgent.js#L64-L66)
@@ -321,4 +394,4 @@ Common issues and resolutions:
 - [lineupService.js:190-218](file://backend/services/lineupService.js#L190-L218)
 
 ## Conclusion
-The Lineup Agent provides a robust, high-confidence analysis of confirmed starting XI data within the multi-agent prediction system. By leveraging structured prompts, standardized output schemas, and conflict-aware negotiation, it delivers actionable insights on lineup strength, key absences, and tactical implications. Its integration with the Lineup Service ensures reliable data sourcing and computation, while the Orchestrator coordinates seamless multi-agent workflows and final probability blending.
+The Lineup Agent provides a robust, high-confidence analysis of confirmed starting XI data within the multi-agent prediction system. By leveraging structured prompts, standardized output schemas, and conflict-aware negotiation, it delivers actionable insights on lineup strength, key absences, and tactical implications. Its integration with the Lineup Service ensures reliable data sourcing and computation through an enhanced multi-source scraping pipeline. The addition of Google multi-source search and Sofascore integration significantly improves data reliability and availability. The Orchestrator coordinates seamless multi-agent workflows and final probability blending, making the Lineup Agent a critical component in the World Cup 2026 prediction system.
