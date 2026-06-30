@@ -1021,6 +1021,17 @@ function generateRoadToFinal() {
           ? Math.round(pred.prob_home / (pred.prob_home + pred.prob_away) * 100)
           : (home && away ? eloP(home, away) : null);
 
+        // For actual matches, determine prediction accuracy
+        let predictedWinner = null;
+        let predictionCorrect = null;
+        if (isActual && dbM && home && away) {
+          const matchPred = predByMatch[bm.matchId];
+          if (matchPred) {
+            predictedWinner = matchPred.prob_home >= matchPred.prob_away ? home : away;
+            predictionCorrect = dbM.winner && predictedWinner && dbM.winner === predictedWinner.id;
+          }
+        }
+
         return {
           id: bm.matchId,
           home: home ? { id: home.id, name: home.name, flag: home.flag, winPct: pHome } : null,
@@ -1028,6 +1039,8 @@ function generateRoadToFinal() {
           winner: winner ? { id: winner.id, name: winner.name, flag: winner.flag } : null,
           score,
           isActual,
+          predictedWinner: predictedWinner ? { id: predictedWinner.id } : null,
+          predictionCorrect,
         };
       });
 

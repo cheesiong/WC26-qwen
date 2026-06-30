@@ -16,14 +16,18 @@ const CONN_W = 24;
 
 function BracketMatchCard({ match }) {
   const teamName = useTeamName();
-  const { home, away, winner, score, isActual } = match;
+  const { home, away, winner, score, isActual, predictedWinner, predictionCorrect } = match;
   if (!home && !away) return null;
 
   const homeWins = winner?.id === home?.id;
   const awayWins = winner?.id === away?.id;
   const scores = score ? score.split('–') : [null, null];
 
-  const TeamRow = ({ team, isWinner, scoreVal }) => (
+  // Determine prediction accuracy indicators
+  const homePredicted = predictedWinner?.id === home?.id;
+  const awayPredicted = predictedWinner?.id === away?.id;
+
+  const TeamRow = ({ team, isWinner, scoreVal, wasPredicted, predictionWasCorrect }) => (
     <div className={`flex items-center gap-1.5 px-2 py-[5px] ${isWinner ? 'bg-cn-red/[0.07]' : ''}`}>
       {team?.id ? <FlagImage teamId={team.id} className="w-5 flex-shrink-0" /> : <span className="w-5 h-3 bg-apple-raised rounded-sm flex-shrink-0" />}
       {team?.id ? (
@@ -35,8 +39,11 @@ function BracketMatchCard({ match }) {
       ) : (
         <span className="flex-1 text-[11px] font-bold tracking-wider text-apple-tertiary">TBD</span>
       )}
-      {isActual && isWinner && (
-        <span className="text-[9px] text-cn-gold font-bold flex-shrink-0">✓</span>
+      {/* Prediction accuracy indicators for actual matches */}
+      {isActual && wasPredicted && (
+        <span className={`text-[10px] font-bold flex-shrink-0 ${predictionWasCorrect ? 'text-green-500' : 'text-red-500'}`}>
+          {predictionWasCorrect ? '✓' : '✗'}
+        </span>
       )}
       {isActual && scoreVal != null && (
         <span className={`text-[11px] font-bold tabular-nums flex-shrink-0 ${
@@ -53,7 +60,7 @@ function BracketMatchCard({ match }) {
 
   return (
     <div className="tang-card bg-apple-surface/80 rounded-xl border border-cn-gold/12 overflow-hidden shadow-tang">
-      <TeamRow team={home} isWinner={homeWins} scoreVal={scores[0]} />
+      <TeamRow team={home} isWinner={homeWins} scoreVal={scores[0]} wasPredicted={homePredicted} predictionWasCorrect={homePredicted && predictionCorrect} />
       {!isActual && home?.winPct != null ? (
         <div className="h-[2px] bg-apple-raised">
           <div className="h-full bg-cn-gold/45" style={{ width: `${home.winPct}%` }} />
@@ -61,7 +68,7 @@ function BracketMatchCard({ match }) {
       ) : (
         <div className="h-px bg-black/[0.05] mx-2" />
       )}
-      <TeamRow team={away} isWinner={awayWins} scoreVal={scores[1]} />
+      <TeamRow team={away} isWinner={awayWins} scoreVal={scores[1]} wasPredicted={awayPredicted} predictionWasCorrect={awayPredicted && predictionCorrect} />
     </div>
   );
 }

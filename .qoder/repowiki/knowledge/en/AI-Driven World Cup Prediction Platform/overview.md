@@ -1,1 +1,0 @@
-Orchestrates a React frontend and Node.js backend to deliver AI-driven World Cup predictions via unified startup scripts and Docker Compose.

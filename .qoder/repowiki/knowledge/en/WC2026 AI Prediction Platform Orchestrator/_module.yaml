@@ -1,6 +1,6 @@
 schema_version: 1
 module_path: ""
-title: AI-Driven World Cup Prediction Platform
+title: WC2026 AI Prediction Platform Orchestrator
 scope:
     - README.md
     - AGENTS.md

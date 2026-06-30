@@ -3,11 +3,11 @@ schema_version: 1
 locale: en-US
 branch: master
 nodes_managed: true
-exported_at: "2026-06-30T01:22:39Z"
+exported_at: "2026-06-30T05:30:54Z"
 modules:
     "":
-        dir_name: AI-Driven World Cup Prediction Platform
-        title: AI-Driven World Cup Prediction Platform
+        dir_name: WC2026 AI Prediction Platform Orchestrator
+        title: WC2026 AI Prediction Platform Orchestrator
         scope:
             - README.md
             - AGENTS.md
@@ -56,8 +56,8 @@ modules:
         depends_on: []
         related_to: []
     backend:
-        dir_name: Multi-Agent Prediction & Post-Match Analysis
-        title: Multi-Agent Prediction & Post-Match Analysis
+        dir_name: WC 2026 Multi-Agent Prediction & Tournament Engine
+        title: WC 2026 Multi-Agent Prediction & Tournament Engine
         scope:
             - backend/
         source_files: []

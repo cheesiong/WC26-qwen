@@ -673,6 +673,103 @@ async function runLineupCron() {
 
 cron.schedule('*/15 * * * *', runLineupCron);
 
+// ── Bracket update cron ────────────────────────────────────────────
+// Runs hourly from midnight to noon SGT to update bracket with actual results
+// and re-predict coming rounds
+async function runBracketUpdateCron() {
+  const now = new Date();
+  if (now >= new Date('2026-07-23T00:00:00Z')) return; // tournament ended
+
+  const db = getDb();
+  console.log('[cron] bracket update run');
+
+  try {
+    // Find completed matches that need bracket advancement
+    const completedMatches = db.prepare(`
+      SELECT id, stage, winner FROM matches
+      WHERE status = 'COMPLETED' AND winner IS NOT NULL
+      AND stage IN ('R32', 'R16', 'QF', 'SF')
+    `).all();
+
+    let updated = 0;
+    for (const m of completedMatches) {
+      // Check if winner has been advanced to next round
+      const nextStageMap = { R32: 'R16', R16: 'QF', QF: 'SF', SF: 'F' };
+      const nextStage = nextStageMap[m.stage];
+      if (!nextStage) continue;
+
+      // Find the next round match that should have this winner
+      const nextMatch = db.prepare(`
+        SELECT id, home_team, away_team FROM matches
+        WHERE stage = ? AND (home_team = ? OR away_team = ?)
+      `).get([nextStage, m.winner, m.winner]);
+
+      // If winner is not in next round, advance them
+      if (!nextMatch) {
+        // Find the next round match slot that should receive this winner
+        const bracketMap = {
+          'R32-01': { next: 'R16-01', side: 'home' },
+          'R32-02': { next: 'R16-02', side: 'home' },
+          'R32-03': { next: 'R16-01', side: 'away' },
+          'R32-04': { next: 'R16-02', side: 'away' },
+          'R32-05': { next: 'R16-03', side: 'away' },
+          'R32-06': { next: 'R16-04', side: 'away' },
+          'R32-07': { next: 'R16-03', side: 'home' },
+          'R32-08': { next: 'R16-04', side: 'home' },
+          'R32-09': { next: 'R16-05', side: 'home' },
+          'R32-10': { next: 'R16-06', side: 'home' },
+          'R32-11': { next: 'R16-05', side: 'away' },
+          'R32-12': { next: 'R16-06', side: 'away' },
+          'R32-13': { next: 'R16-07', side: 'away' },
+          'R32-14': { next: 'R16-08', side: 'away' },
+          'R32-15': { next: 'R16-07', side: 'home' },
+          'R32-16': { next: 'R16-08', side: 'home' },
+        };
+
+        const mapping = bracketMap[m.id];
+        if (mapping) {
+          const nextM = db.prepare('SELECT id, home_team, away_team FROM matches WHERE id = ?').get([mapping.next]);
+          if (nextM) {
+            const updateField = mapping.side === 'home' ? 'home_team' : 'away_team';
+            const currentTeam = nextM[updateField];
+            if (!currentTeam || currentTeam !== m.winner) {
+              db.prepare(`UPDATE matches SET ${updateField} = ? WHERE id = ?`).run([m.winner, mapping.next]);
+              console.log(`[cron] advanced ${m.winner} from ${m.id} to ${mapping.next} (${updateField})`);
+              updated++;
+            }
+          }
+        }
+      }
+    }
+
+    if (updated > 0) {
+      console.log(`[cron] bracket updated: ${updated} team(s) advanced`);
+      // Re-predict upcoming matches
+      try {
+        const { predict } = require('./services/predictionEngine');
+        const upcoming = db.prepare(`
+          SELECT id FROM matches
+          WHERE status = 'SCHEDULED' AND home_team IS NOT NULL AND away_team IS NOT NULL
+          AND stage IN ('R16', 'QF', 'SF', 'F')
+          ORDER BY scheduled_date, scheduled_time
+          LIMIT 4
+        `).all();
+        for (const m of upcoming) {
+          await predict(m.id, true);
+          console.log(`[cron] re-predicted ${m.id}`);
+        }
+      } catch (e) {
+        console.error('[cron] re-prediction failed:', e.message);
+      }
+    }
+  } catch (e) {
+    console.error('[cron] bracket update failed:', e.message);
+  }
+}
+
+// Run bracket update hourly from midnight to noon SGT
+cron.schedule('0 0-12 * * *', runBracketUpdateCron, { timezone: 'Asia/Singapore' });
+
 // Serve React frontend in production
 const frontendDist = path.join(__dirname, '../frontend/dist');
 app.use(express.static(frontendDist));

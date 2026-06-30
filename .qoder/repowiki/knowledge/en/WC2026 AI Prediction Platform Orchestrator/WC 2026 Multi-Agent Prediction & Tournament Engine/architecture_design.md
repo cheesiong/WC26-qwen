@@ -1,0 +1,6 @@
+- **Entry Point**: `server.js` exposes a REST API (Express) with cron jobs for live result syncing (`dataService`) and lineup fetching (`lineupService`).
+- **Prediction Core**: `predictionEngine.js` implements a Dixon-Coles bivariate Poisson backbone. It supports a legacy single-agent path and a multi-agent path via `orchestratorAgent.js`.
+- **Agent Framework**: `services/agents/` defines a `AgentSession` class in `agentFramework.js` that coordinates specialist agents (Statistical, H2H, Form, Intel, Lineup). It handles conflict detection (probability delta ≥ 0.20) and two-round negotiation.
+- **LLM Integration**: `qwenClient.js` provides an Axios-based client for Alibaba Cloud DashScope, routing tasks to Qwen-max, plus, or turbo models based on complexity.
+- **Analysis & Calibration**: `analysisService.js` handles post-match logic, including Brier score computation, points allocation, and idempotent updates to group standings. `calibrationService.js` refits temperature scaling and Dixon-Coles ρ parameters every 10 completed matches.
+- **Data Layer**: `database/db.js` manages a SQLite database (`node-sqlite3-wasm`) with schema migrations and default model weight seeding.

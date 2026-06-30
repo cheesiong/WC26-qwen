@@ -1,0 +1,3 @@
+- Defines the deployment boundary using `docker-compose.yml`, where the `frontend` service proxies API requests to the `backend` service over an internal Docker network.
+- Manages unified local lifecycle through `start.sh`, which synchronizes dependency installation, database seeding, and parallel server booting.
+- Standardizes production deployment via `deploy.sh` and `setup-ecs.sh`, automating rsync-based code synchronization and container rebuilding on Alibaba Cloud ECS.

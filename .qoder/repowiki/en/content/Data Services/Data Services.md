@@ -18,10 +18,9 @@
 
 ## Update Summary
 **Changes Made**
-- Enhanced lineup service documentation to include new Google multi-source scraping capabilities
-- Added Sofascore structured data extraction functionality
-- Updated the multi-source fetching architecture documentation
-- Expanded lineup tracking and strength modeling documentation to reflect new capabilities
+- Enhanced data service validation logic for live result synchronization with automatic detection and correction of API score type errors
+- Added comprehensive logging for debugging purposes in live result synchronization
+- Updated troubleshooting guide to include score type error handling procedures
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -37,7 +36,7 @@
 
 ## Introduction
 This document describes the data services layer responsible for external data integration and processing in the World Cup 2026 prediction platform. It covers:
-- External data sources: football-data.org API integration, web scraping for injuries and lineups, and real-time live result synchronization
+- External data sources: football-data.org API integration, web scraping for injuries and lineups, and real-time live result synchronization with enhanced validation logic
 - Historical head-to-head analysis using a 47k-match dataset
 - Lineup tracking and player availability modeling with enhanced multi-source scraping capabilities
 - Suspension tracking for yellow/red cards
@@ -96,7 +95,7 @@ LA --> LS
 ```
 
 **Diagram sources**
-- [dataService.js:1-602](file://backend/services/dataService.js#L1-L602)
+- [dataService.js:1-631](file://backend/services/dataService.js#L1-L631)
 - [h2hService.js:1-315](file://backend/services/h2hService.js#L1-L315)
 - [lineupService.js:1-572](file://backend/services/lineupService.js#L1-L572)
 - [suspensionService.js:1-152](file://backend/services/suspensionService.js#L1-L152)
@@ -109,7 +108,7 @@ LA --> LS
 - [lineupAgent.js:1-118](file://backend/services/agents/lineupAgent.js#L1-L118)
 
 **Section sources**
-- [dataService.js:1-602](file://backend/services/dataService.js#L1-L602)
+- [dataService.js:1-631](file://backend/services/dataService.js#L1-L631)
 - [h2hService.js:1-315](file://backend/services/h2hService.js#L1-L315)
 - [lineupService.js:1-572](file://backend/services/lineupService.js#L1-L572)
 - [suspensionService.js:1-152](file://backend/services/suspensionService.js#L1-L152)
@@ -121,7 +120,7 @@ LA --> LS
 - [server.js:1-41](file://backend/server.js#L1-L41)
 
 ## Core Components
-- dataService: Integrates football-data.org API and web scraping for team form, injuries, news, and live result synchronization. Implements caching and fallback strategies.
+- dataService: Integrates football-data.org API and web scraping for team form, injuries, news, and live result synchronization with enhanced validation logic for score type error detection and correction.
 - h2hService: Loads and maintains a 47k-match historical dataset, computes competition-weighted head-to-head records, and converts them to probabilities.
 - lineupService: Fetches confirmed starting XIs from multiple sources including API, ESPN, BBC, Google multi-source search, and Sofascore structured data extraction. Computes lineup strength, detects key absences, and translates lineup impact into probability adjustments.
 - suspensionService: Tracks yellow/red card accumulations and suspensions across the tournament, with stage-aware thresholds and watch lists.
@@ -131,7 +130,7 @@ LA --> LS
 - oddsService: Fetches betting odds from The Odds API with caching and quota preservation.
 
 **Section sources**
-- [dataService.js:1-602](file://backend/services/dataService.js#L1-L602)
+- [dataService.js:1-631](file://backend/services/dataService.js#L1-L631)
 - [h2hService.js:1-315](file://backend/services/h2hService.js#L1-L315)
 - [lineupService.js:1-572](file://backend/services/lineupService.js#L1-L572)
 - [suspensionService.js:1-152](file://backend/services/suspensionService.js#L1-L152)
@@ -143,7 +142,7 @@ LA --> LS
 ## Architecture Overview
 The data services layer follows a layered architecture:
 - External integrations: API clients and scrapers feed raw data into the system
-- Transformation: Services parse, validate, and enrich data
+- Transformation: Services parse, validate, and enrich data with enhanced error detection
 - Caching: SQLite-backed cache stores processed data with TTL controls
 - Orchestration: predictionEngine composes signals and generates predictions
 - Persistence: database persists predictions, model performance, and metadata
@@ -189,7 +188,7 @@ Responsibilities:
 - Team form retrieval from API with fallback to web scraping and synthetic generation
 - Head-to-head records from API with fallback to Elo-based estimates
 - Pre-match intelligence via web scraping and LLM parsing with anti-hallucination validation
-- Real-time live result synchronization with score reversal logic and penalty handling
+- Real-time live result synchronization with enhanced validation logic for score type error detection and correction
 - Caching with TTL controls for form, H2H, and intel
 
 Key implementation patterns:
@@ -198,24 +197,58 @@ Key implementation patterns:
 - LLM parsing with strict validation against source text
 - Cache-first strategy with TTL checks
 - Lazy loading to avoid circular dependencies
+- **Enhanced validation logic**: Automatic detection and correction of API score type errors with comprehensive logging
+
+**Updated** Enhanced validation logic for live result synchronization
+
+The live result synchronization now includes sophisticated validation logic to handle API score type errors:
 
 ```mermaid
 flowchart TD
-Start(["fetchWebIntel"]) --> CheckCache["Check web_intel_cache"]
-CheckCache --> |Fresh| ReturnCache["Return cached intel"]
-CheckCache --> |Expired| Scrape["Scrape team news (parallel)"]
-Scrape --> LLM["Parse with Qwen LLM"]
-LLM --> |Success| Validate["Anti-hallucination validation"]
-LLM --> |Fail| RegexFallback["Regex-based injury extraction"]
-Validate --> CacheStore["Store in web_intel_cache"]
-RegexFallback --> CacheStore
-CacheStore --> ReturnResult["Return intel"]
+Start(["syncLiveResults"]) --> CheckAPIKey["Check API Key"]
+CheckAPIKey --> |Missing| Skip["Skip live sync"]
+CheckAPIKey --> |Present| FetchInProgress["Fetch IN_PLAY/PAUSED matches"]
+FetchInProgress --> MarkLive["Mark matches LIVE"]
+MarkLive --> FetchFinished["Fetch FINISHED matches"]
+FetchFinished --> ValidateScores["Validate API Scores"]
+ValidateScores --> CheckNull{"Null scores?"}
+CheckNull --> |Yes| LogWarning["Log warning and skip"]
+CheckNull --> |No| CheckScoreType{"High scores with penalties?"}
+CheckScoreType --> |No| RecordResult["Record result"]
+CheckScoreType --> |Yes| CheckExtraTime{"Extra time scores exist?"}
+CheckExtraTime --> |Yes| UseExtraTime["Use extraTime as FT"]
+CheckExtraTime --> |No| AssumeDraw["Assume 0-0 draw (penalties)"]
+UseExtraTime --> RecordResult
+AssumeDraw --> RecordResult
+RecordResult --> LogCorrection["Log correction details"]
+LogCorrection --> Complete["Complete update"]
 ```
 
 **Diagram sources**
-- [dataService.js:432-509](file://backend/services/dataService.js#L432-L509)
-- [dataService.js:294-399](file://backend/services/dataService.js#L294-L399)
-- [dataService.js:401-430](file://backend/services/dataService.js#L401-L430)
+- [dataService.js:514-628](file://backend/services/dataService.js#L514-L628)
+- [dataService.js:584-610](file://backend/services/dataService.js#L584-L610)
+
+Key validation features:
+- **Automatic score type detection**: Identifies when API returns penalty scores in fullTime field
+- **Intelligent correction logic**: Uses extraTime scores when available, otherwise assumes 0-0 draw
+- **Comprehensive logging**: Extensive console warnings and logs for debugging score type errors
+- **Score reversal handling**: Detects and corrects API home/away team ID mismatches
+
+```mermaid
+flowchart TD
+DetectError["Detect API Score Type Error"] --> CheckCondition{"apiHome >= 3 AND apiAway >= 3<br/>AND penalties exist?"}
+CheckCondition --> |Yes| LogWarning["Console warning about score confusion"]
+LogWarning --> CheckExtraTime{"Extra time scores available?"}
+CheckExtraTime --> |Yes| UseExtraTime["Use extraTime as fullTime"]
+CheckExtraTime --> |No| AssumeDraw["Assume 0-0 draw (penalties)"]
+UseExtraTime --> LogCorrection["Log correction details"]
+AssumeDraw --> LogCorrection
+LogCorrection --> ApplyCorrections["Apply score corrections"]
+CheckCondition --> |No| Proceed["Proceed with normal processing"]
+```
+
+**Diagram sources**
+- [dataService.js:584-610](file://backend/services/dataService.js#L584-L610)
 
 **Section sources**
 - [dataService.js:18-41](file://backend/services/dataService.js#L18-L41)
@@ -223,6 +256,7 @@ CacheStore --> ReturnResult["Return intel"]
 - [dataService.js:190-246](file://backend/services/dataService.js#L190-L246)
 - [dataService.js:432-509](file://backend/services/dataService.js#L432-L509)
 - [dataService.js:514-599](file://backend/services/dataService.js#L514-L599)
+- [dataService.js:584-610](file://backend/services/dataService.js#L584-L610)
 
 ### h2hService: Real Head-to-Head Dataset
 Responsibilities:
@@ -431,6 +465,7 @@ AS --> DB
 - Backoff and retries: LLM calls implement exponential backoff to handle transient failures gracefully.
 - Lightweight transformations: Position weights and strength scoring are computed in-process for quick turnaround.
 - Multi-source redundancy: Enhanced lineup service provides multiple fallback options to ensure data availability.
+- **Enhanced validation overhead**: Score type validation adds minimal overhead while providing critical data integrity for live results.
 
 ## Troubleshooting Guide
 Common issues and remedies:
@@ -440,6 +475,16 @@ Common issues and remedies:
 - Cache staleness: TTL checks ensure fresh data is fetched when cached entries expire.
 - Database contention: Lock handling and transaction blocks prevent corruption during seeding and updates.
 - Google search limitations: Multi-source Google scraping may fail if search results are not available or structured data is missing.
+- **Score type errors**: Live result synchronization now includes automatic detection and correction of API score type errors with comprehensive logging for debugging.
+
+**Updated** Enhanced troubleshooting guidance for score type errors
+
+**Score Type Error Handling Procedures**:
+1. **Detection**: System automatically detects when API returns penalty scores in fullTime field (both scores ≥ 3)
+2. **Logging**: Extensive console warnings are generated with match ID, score values, and correction actions
+3. **Correction**: Uses extraTime scores when available, otherwise assumes 0-0 draw for penalty shootouts
+4. **Debugging**: Comprehensive logging helps identify and resolve API score type inconsistencies
+5. **Validation**: Score reversal detection prevents incorrect team ID mapping between API and database
 
 **Section sources**
 - [dataService.js:514-518](file://backend/services/dataService.js#L514-L518)
@@ -447,9 +492,12 @@ Common issues and remedies:
 - [dataService.js:401-430](file://backend/services/dataService.js#L401-L430)
 - [h2hService.js:95-106](file://backend/services/h2hService.js#L95-L106)
 - [db.js:10-21](file://backend/database/db.js#L10-L21)
+- [dataService.js:584-610](file://backend/services/dataService.js#L584-L610)
 
 ## Conclusion
 The data services layer provides a robust, resilient pipeline for integrating external data, transforming it into actionable signals, and feeding them into the prediction engine. Through careful caching, fallback strategies, and anti-hallucination validation, it ensures reliable predictions even under adverse conditions. The enhanced lineup service with multi-source scraping capabilities significantly improves data availability and reliability. The modular design enables easy maintenance and extension as new data sources and signals are introduced.
+
+**Updated** Recent enhancements include sophisticated validation logic for live result synchronization that automatically detects and corrects API score type errors, along with comprehensive logging for debugging purposes. These improvements ensure data integrity and provide valuable insights for troubleshooting score-related issues in real-time match synchronization.
 
 ## Appendices
 
@@ -494,3 +542,28 @@ The lineup service now implements a sophisticated multi-source architecture:
 - [lineupService.js:158-209](file://backend/services/lineupService.js#L158-L209)
 - [lineupService.js:212-290](file://backend/services/lineupService.js#L212-L290)
 - [lineupService.js:416-426](file://backend/services/lineupService.js#L416-L426)
+
+### Enhanced Live Result Synchronization Validation
+**New** Comprehensive score type error detection and correction system
+
+The live result synchronization now includes advanced validation logic:
+
+**Detection Logic**:
+- High score threshold: Both fullTime scores ≥ 3
+- Penalty existence check: Penalties object contains scores
+- Automatic flagging of potential score type confusion
+
+**Correction Mechanisms**:
+- Extra time precedence: Uses extraTime scores when available
+- Penalty shootout assumption: Assumes 0-0 draw for penalty shootouts
+- Comprehensive logging: Detailed console warnings with match context
+
+**Debugging Features**:
+- Match-specific warnings with score values
+- Correction action logging
+- Context-aware assumptions (extraTime vs penalty shootout)
+- Score reversal detection and correction
+
+**Section sources**
+- [dataService.js:584-610](file://backend/services/dataService.js#L584-L610)
+- [dataService.js:514-628](file://backend/services/dataService.js#L514-L628)

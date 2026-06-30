@@ -12,10 +12,10 @@
 
 ## Update Summary
 **Changes Made**
-- Updated the lineup service source priority order to include Google-based and Sofascore scraping functions
-- Enhanced the detailed component analysis to reflect the new Google-based scraping and Sofascore scraping capabilities
-- Updated the source priority order from 1. API → 2. ESPN → 3. BBC to 1. API → 2. ESPN → 3. Sofascore → 4. Google
-- Added documentation for the new Google multi-source search and Sofascore structured data extraction capabilities
+- Enhanced Detailed Component Analysis section with improved data service documentation covering new validation logic for penalty shootout score correction and automatic score inference mechanisms
+- Updated the penalty shootout validation logic to include automatic score inference when API returns penalty scores in full-time field
+- Added documentation for the sophisticated sanity check that detects and corrects API score duplication issues
+- Enhanced the data service error handling and logging for penalty shootout scenarios
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -34,7 +34,7 @@ This document provides comprehensive API documentation for the system synchroniz
 ## Project Structure
 The synchronization functionality is implemented primarily in the backend server and several service modules:
 - The Express server exposes the POST /api/sync endpoint and defines cron jobs for automated synchronization.
-- The data service integrates with external APIs (football-data.org) and handles live result synchronization.
+- The data service integrates with external APIs (football-data.org) and handles live result synchronization with advanced validation logic.
 - The analysis service records match results and triggers downstream analytics and cache invalidation.
 - The lineup service manages lineup retrieval and computation for matches within two hours of kickoff, utilizing multiple scraping sources.
 - The database module defines the schema and caching tables used by the synchronization system.
@@ -181,7 +181,7 @@ Server-->>Client : {updated, count}
 ## Detailed Component Analysis
 
 ### Data Service: External API Integration and Result Recording
-The data service coordinates live result synchronization with external APIs and local caching.
+The data service coordinates live result synchronization with external APIs and local caching, featuring sophisticated validation logic for penalty shootout score correction and automatic score inference mechanisms.
 
 - External API Integration:
   - Uses the football-data.org API with an API key for accessing match data.
@@ -190,9 +190,11 @@ The data service coordinates live result synchronization with external APIs and 
   - Processes in-progress matches by setting their status to LIVE.
   - Processes finished matches by recording final scores and penalties.
   - Handles score reversal when the external API reports home/away teams differently than the internal database.
-- Caching:
-  - Stores recent form, head-to-head records, and web intelligence in a cache table with expiration.
-  - Validates cache freshness using time-to-live constants.
+- Advanced Penalty Shootout Validation:
+  - **Automatic Score Inference**: Detects when API returns penalty scores in full-time field and automatically infers correct full-time scores.
+  - **Sanity Check Logic**: Validates that full-time scores are reasonable (typically 0-5 per team) and flags suspicious patterns.
+  - **Context-Aware Correction**: Uses extra-time scores when available, otherwise assumes a 0-0 draw for penalty shootout scenarios.
+  - **Score Duplication Prevention**: Prevents API score duplication where penalties are mistakenly placed in full-time field.
 
 ```mermaid
 flowchart TD
@@ -203,10 +205,17 @@ FetchInProgress --> UpdateStatus["Set Status to LIVE for SCHEDULED matches"]
 UpdateStatus --> FetchFinished["Fetch Finished Matches"]
 FetchFinished --> ValidateScores{"Scores Valid?"}
 ValidateScores --> |No| SkipMatch["Skip Match"]
-ValidateScores --> |Yes| ReverseCheck{"Need Score Reversal?"}
+ValidateScores --> |Yes| SanityCheck{"Sanity Check Required?"}
+SanityCheck --> |Yes| DetectPenalties["Detect Penalty Scores in Full-Time Field"]
+DetectPenalties --> CheckExtraTime{"Extra Time Scores Available?"}
+CheckExtraTime --> |Yes| UseExtraTime["Use Extra Time as Full-Time"]
+CheckExtraTime --> |No| AssumeDraw["Assume 0-0 Draw (Penalty Scenario)"]
+SanityCheck --> |No| ReverseCheck{"Need Score Reversal?"}
 ReverseCheck --> |Yes| ApplyReversal["Swap Scores Based on Team Mapping"]
 ReverseCheck --> |No| KeepScores["Keep Scores as-is"]
-ApplyReversal --> RecordResult["Record Match Result"]
+UseExtraTime --> RecordResult["Record Match Result"]
+AssumeDraw --> RecordResult
+ApplyReversal --> RecordResult
 KeepScores --> RecordResult
 RecordResult --> AddToUpdate["Add to Updated List"]
 AddToUpdate --> NextMatch["Next Match"]
@@ -214,12 +223,14 @@ SkipMatch --> NextMatch
 NextMatch --> Done(["Return Updated Match IDs"])
 ```
 
+**Updated** Enhanced with sophisticated penalty shootout validation logic that automatically detects and corrects API score duplication issues, including automatic score inference when penalties are mistakenly placed in full-time field.
+
 **Diagram sources**
-- [dataService.js:514-599](file://backend/services/dataService.js#L514-L599)
+- [dataService.js:514-628](file://backend/services/dataService.js#L514-L628)
 
 **Section sources**
 - [dataService.js:18-28](file://backend/services/dataService.js#L18-L28)
-- [dataService.js:514-599](file://backend/services/dataService.js#L514-L599)
+- [dataService.js:514-628](file://backend/services/dataService.js#L514-L628)
 - [db.js:147-157](file://backend/database/db.js#L147-L157)
 
 ### Analysis Service: Match Result Recording and Downstream Effects
@@ -397,6 +408,7 @@ DB --> LineupService
 - Database Concurrency: The database uses appropriate pragmas and migrations to handle concurrent access and evolving schema.
 - Prediction Regeneration Cooldown: The prediction regeneration cron avoids re-processing matches that have been recently updated, preventing unnecessary recomputation.
 - Enhanced Scraping Efficiency: The new Google-based and Sofascore scraping functions provide improved reliability and coverage compared to traditional ESPN-only approaches.
+- **Advanced Score Validation**: The penalty shootout validation logic prevents score duplication issues and ensures accurate match result recording even when external APIs provide inconsistent data.
 
 ## Troubleshooting Guide
 Common issues and resolutions:
@@ -415,6 +427,11 @@ Common issues and resolutions:
   - Symptom: Matches with null scores are skipped with a warning.
   - Resolution: Retry later when the external API provides complete data.
   - Reference: [dataService.js:577-580](file://backend/services/dataService.js#L577-L580)
+
+- **Penalty Shootout Score Issues**:
+  - Symptom: Matches show unusual score patterns or penalty shootout confusion.
+  - Resolution: The system automatically detects and corrects API score duplication. Check logs for penalty shootout validation messages and verify that extra-time scores are being used when available.
+  - Reference: [dataService.js:584-610](file://backend/services/dataService.js#L584-L610)
 
 - Lineup Not Available:
   - Symptom: Lineup service indicates lineup not yet announced or retrievable.
@@ -438,7 +455,7 @@ Common issues and resolutions:
   - Reference: [bracketService.js:711-713](file://backend/services/bracketService.js#L711-L713)
 
 **Section sources**
-- [dataService.js:515-599](file://backend/services/dataService.js#L515-L599)
+- [dataService.js:515-628](file://backend/services/dataService.js#L515-L628)
 - [lineupService.js:391-397](file://backend/services/lineupService.js#L391-L397)
 - [lineupService.js:157-209](file://backend/services/lineupService.js#L157-L209)
 - [lineupService.js:211-290](file://backend/services/lineupService.js#L211-L290)
@@ -448,10 +465,12 @@ Common issues and resolutions:
 ## Conclusion
 The system synchronization endpoints provide robust mechanisms for integrating live match data, updating results, and triggering downstream processes such as prediction regeneration and lineup fetching. The manual POST /api/sync endpoint offers immediate control, while automated cron jobs ensure continuous synchronization during the tournament. 
 
-**Enhanced Lineup Service**: The recent additions of Google-based and Sofascore scraping functions significantly improve the reliability and coverage of lineup retrieval. The new multi-source approach prioritizes direct API access, traditional ESPN scraping, modern Sofascore structured data extraction, and comprehensive Google search across multiple football websites.
+**Enhanced Data Validation**: The recent improvements to the data service include sophisticated penalty shootout validation logic that automatically detects and corrects API score duplication issues. This enhancement ensures that when external APIs mistakenly place penalty scores in the full-time field, the system can intelligently infer the correct scores using extra-time data or assume a 0-0 draw for penalty shootout scenarios.
 
-**Improved Reliability**: These enhancements provide better fallback mechanisms when primary sources fail, ensuring that lineups can still be retrieved from alternative sources. The Google multi-source search leverages rich results and knowledge graphs, while Sofascore's structured data approach provides reliable player information from SEO-rendered HTML.
+**Improved Reliability**: The new validation logic prevents score duplication problems and provides fallback mechanisms for determining correct match outcomes when API data is inconsistent. This significantly improves the reliability of match result recording and downstream analytics.
 
-**Performance Benefits**: The enhanced lineup service maintains efficient caching while expanding the range of available sources, reducing the likelihood of lineup unavailability and improving the overall robustness of the prediction system.
+**Advanced Score Inference**: The system now includes intelligent score inference capabilities that can handle complex scenarios where API data requires interpretation. This includes checking for reasonable score ranges, detecting suspicious patterns, and using contextual information to determine the most likely correct scores.
 
-By understanding the integration points, enhanced scraping capabilities, and troubleshooting steps outlined above, operators can effectively manage synchronization and address common issues with the improved lineup retrieval system.
+**Performance Benefits**: The enhanced data service maintains efficient processing while adding robust validation layers. The penalty shootout validation operates transparently in the background, ensuring data integrity without impacting performance.
+
+By understanding the integration points, enhanced validation capabilities, and troubleshooting steps outlined above, operators can effectively manage synchronization and address common issues with the improved data validation system.

@@ -10,6 +10,13 @@
 - [lineupService.js](file://backend/services/lineupService.js)
 </cite>
 
+## Update Summary
+**Changes Made**
+- Enhanced syncLiveResults function documentation with sophisticated penalty shootout validation logic
+- Added comprehensive sanity checks for detecting incorrectly placed penalty scores in full-time fields
+- Updated data synchronization pipeline to include automatic correction mechanisms for improved accuracy
+- Revised detailed component analysis to reflect the new validation and correction capabilities
+
 ## Table of Contents
 1. [Introduction](#introduction)
 2. [Project Structure](#project-structure)
@@ -22,11 +29,11 @@
 9. [Conclusion](#conclusion)
 
 ## Introduction
-This document explains the live data integration system that synchronizes real-time match data from the football-data.org API. It covers the syncLiveResults function implementation, API client configuration, authentication handling, match status tracking, and the end-to-end data synchronization pipeline. It also documents the team ID mapping system for API compatibility, reverse lookup functionality, error handling strategies, rate limiting considerations, retry mechanisms, fallback strategies for API failures, integration with the prediction engine to prevent prediction updates during active matches, caching strategies for live data, and the relationship with the analysis service for result recording.
+This document explains the live data integration system that synchronizes real-time match data from the football-data.org API. It covers the enhanced syncLiveResults function implementation with sophisticated validation logic to detect and correct penalty shootout scores incorrectly placed in full-time fields, API client configuration, authentication handling, match status tracking, and the end-to-end data synchronization pipeline. It also documents the team ID mapping system for API compatibility, reverse lookup functionality, error handling strategies, rate limiting considerations, retry mechanisms, fallback strategies for API failures, integration with the prediction engine to prevent prediction updates during active matches, caching strategies for live data, and the relationship with the analysis service for result recording.
 
 ## Project Structure
 The live data integration spans several backend modules:
-- Data service: Provides API client configuration, authentication, team ID mapping, and the syncLiveResults function.
+- Data service: Provides API client configuration, authentication, team ID mapping, and the enhanced syncLiveResults function with sophisticated validation logic.
 - Analysis service: Records match results, updates standings, advances brackets, and triggers model performance updates.
 - Prediction engine: Prevents prediction updates for matches marked as LIVE and generates predictions for scheduled matches.
 - Database: Defines schema and migration logic for matches, predictions, and supporting tables.
@@ -35,7 +42,7 @@ The live data integration spans several backend modules:
 ```mermaid
 graph TB
 subgraph "Live Data Integration"
-DS["dataService.js<br/>API client, mapping, syncLiveResults"]
+DS["dataService.js<br/>API client, mapping, enhanced syncLiveResults"]
 LS["lineupService.js<br/>Lineup retrieval (API)"]
 end
 subgraph "Prediction Pipeline"
@@ -60,7 +67,7 @@ TD --> PE
 
 **Diagram sources**
 - [dataService.js:18-28](file://backend/services/dataService.js#L18-L28)
-- [dataService.js:514-600](file://backend/services/dataService.js#L514-L600)
+- [dataService.js:514-631](file://backend/services/dataService.js#L514-L631)
 - [analysisService.js:76-218](file://backend/services/analysisService.js#L76-L218)
 - [predictionEngine.js:710-721](file://backend/services/predictionEngine.js#L710-L721)
 - [db.js:23-252](file://backend/database/db.js#L23-L252)
@@ -68,7 +75,7 @@ TD --> PE
 - [lineupService.js:268-273](file://backend/services/lineupService.js#L268-L273)
 
 **Section sources**
-- [dataService.js:1-602](file://backend/services/dataService.js#L1-L602)
+- [dataService.js:1-631](file://backend/services/dataService.js#L1-L631)
 - [analysisService.js:1-422](file://backend/services/analysisService.js#L1-L422)
 - [predictionEngine.js:700-922](file://backend/services/predictionEngine.js#L700-L922)
 - [db.js:23-252](file://backend/database/db.js#L23-L252)
@@ -84,9 +91,11 @@ TD --> PE
   - Forward mapping: TEAMS to football-data.org numeric IDs.
   - Reverse mapping: football-data.org IDs to internal 3-letter codes.
   - Used to reconcile API responses with local matches.
-- Live sync pipeline:
+- Enhanced live sync pipeline:
   - Detects in-progress matches and sets status to LIVE to prevent prediction regeneration.
-  - Processes finished matches, validates scores, and records results via analysisService.
+  - Processes finished matches with sophisticated validation logic to detect and correct penalty shootout scores.
+  - Validates scores using sanity checks and automatically corrects incorrectly placed penalty scores.
+  - Records results via analysisService with improved accuracy.
 - Caching strategy:
   - Web intelligence cache with configurable TTLs for form, H2H, and intel.
   - Prevents redundant network calls and supports offline resilience.
@@ -97,20 +106,21 @@ TD --> PE
 **Section sources**
 - [dataService.js:18-28](file://backend/services/dataService.js#L18-L28)
 - [dataService.js:47-66](file://backend/services/dataService.js#L47-L66)
-- [dataService.js:514-600](file://backend/services/dataService.js#L514-L600)
+- [dataService.js:514-631](file://backend/services/dataService.js#L514-L631)
 - [dataService.js:30-41](file://backend/services/dataService.js#L30-L41)
 - [predictionEngine.js:710-721](file://backend/services/predictionEngine.js#L710-L721)
 
 ## Architecture Overview
-The live data integration follows a two-stage synchronization:
+The live data integration follows a two-stage synchronization with enhanced validation:
 1. Status synchronization: Switch matches from SCHEDULED to LIVE when the API reports IN_PLAY or PAUSED.
-2. Result synchronization: Record final scores for FINISHED matches and update related systems.
+2. Result synchronization: Record final scores for FINISHED matches with sophisticated validation and correction mechanisms for penalty shootout accuracy.
 
 ```mermaid
 sequenceDiagram
 participant Cron as "Scheduler"
 participant DS as "dataService.syncLiveResults()"
 participant API as "football-data.org API"
+participant Validator as "Validation Logic"
 participant DB as "SQLite Database"
 participant AS as "analysisService.recordMatchResult()"
 participant PE as "predictionEngine.predict()"
@@ -126,7 +136,10 @@ DS->>API : GET /competitions/WC/matches?status=FINISHED
 API-->>DS : Finished matches
 loop For each finished match
 DS->>DB : SELECT match by mapped teams
-DS->>AS : recordMatchResult(matchId, homeScore, awayScore, pens?)
+DS->>Validator : Validate scores and detect penalty errors
+Validator->>Validator : Check FT scores >= 3 with penalty existence
+Validator->>Validator : Use extraTime if available, else assume 0-0 draw
+Validator->>AS : recordMatchResult(matchId, homeScore, awayScore, pens?)
 AS->>DB : UPDATE matches + standings/bracket
 AS-->>DS : Result recorded
 end
@@ -137,18 +150,22 @@ DS-->>Cron : Return updated match IDs
 ```
 
 **Diagram sources**
-- [dataService.js:514-599](file://backend/services/dataService.js#L514-L599)
+- [dataService.js:514-631](file://backend/services/dataService.js#L514-L631)
 - [analysisService.js:76-218](file://backend/services/analysisService.js#L76-L218)
 - [predictionEngine.js:710-721](file://backend/services/predictionEngine.js#L710-L721)
 
 ## Detailed Component Analysis
 
-### syncLiveResults Implementation
-The syncLiveResults function orchestrates live match synchronization:
+### Enhanced syncLiveResults Implementation
+The enhanced syncLiveResults function orchestrates live match synchronization with sophisticated validation logic:
 - Authentication gating: Returns early if FOOTBALL_DATA_API_KEY is not set.
 - In-progress detection: Queries API for IN_PLAY and PAUSED matches, maps to local matches, and sets status to LIVE when transitioning from SCHEDULED.
-- Finished match processing: Queries FINISHED matches, filters unprocessed ones, validates scores, handles home/away reversal via reverse mapping, and records results.
+- Enhanced finished match processing: Queries FINISHED matches, filters unprocessed ones, validates scores using comprehensive sanity checks, detects incorrectly placed penalty scores, applies automatic corrections, and records results.
+- Penalty shootout validation: Detects when penalty scores are incorrectly placed in full-time fields using sophisticated criteria.
+- Automatic correction mechanisms: Uses extraTime scores when available, assumes 0-0 draw when necessary, and handles API inconsistencies.
 - Error handling: Wraps each stage in try/catch blocks and logs warnings/errors without failing the entire cycle.
+
+**Updated** Enhanced with sophisticated validation logic to detect and correct penalty shootout scores incorrectly placed in full-time fields, including comprehensive sanity checks and automatic correction mechanisms.
 
 ```mermaid
 flowchart TD
@@ -159,9 +176,16 @@ HasKey --> |Yes| FetchInProgress["GET /competitions/WC/matches?status=IN_PLAY,PA
 FetchInProgress --> UpdateLive["Find local match by API teams<br/>Set status=LIVE if SCHEDULED"]
 UpdateLive --> FetchFinished["GET /competitions/WC/matches?status=FINISHED"]
 FetchFinished --> FilterUnprocessed["Filter matches not yet COMPLETED"]
-FilterUnprocessed --> ValidateScores{"Scores valid?"}
-ValidateScores --> |No| SkipMatch["Warn and skip match"]
-ValidateScores --> |Yes| ReverseCheck{"DB pairing reversed?"}
+FilterUnprocessed --> ExtractScores["Extract API scores and penalties"]
+ExtractScores --> ValidateSanity{"Sanity check:<br/>FT >= 3 AND penalties exist?"}
+ValidateSanity --> |No| ScoresValid["Scores pass validation"]
+ValidateSanity --> |Yes| DetectError["Detect penalty error in FT field"]
+DetectError --> CheckExtraTime{"Extra time available?"}
+CheckExtraTime --> |Yes| UseExtraTime["Use extraTime as FT scores"]
+CheckExtraTime --> |No| AssumeDraw["Assume 0-0 draw (common scenario)"]
+UseExtraTime --> ScoresValid
+AssumeDraw --> ScoresValid
+ScoresValid --> ReverseCheck{"DB pairing reversed?"}
 ReverseCheck --> |Yes| SwapScores["Swap home/away and penalties"]
 ReverseCheck --> |No| KeepScores["Use API scores as-is"]
 SwapScores --> Record["Call analysisService.recordMatchResult()"]
@@ -174,10 +198,10 @@ WarnSkip --> Done
 ```
 
 **Diagram sources**
-- [dataService.js:514-599](file://backend/services/dataService.js#L514-L599)
+- [dataService.js:514-631](file://backend/services/dataService.js#L514-L631)
 
 **Section sources**
-- [dataService.js:514-599](file://backend/services/dataService.js#L514-L599)
+- [dataService.js:514-631](file://backend/services/dataService.js#L514-L631)
 
 ### API Client Configuration and Authentication
 - Base URL: https://api.football-data.org/v4
@@ -207,6 +231,7 @@ class APIResponse {
 +score.fullTime.home : number
 +score.fullTime.away : number
 +score.penalties : Object
++score.extraTime : Object
 }
 class LocalMatch {
 +home_team : string
@@ -225,29 +250,38 @@ TeamMapping --> LocalMatch : "resolves"
 - [dataService.js:47-66](file://backend/services/dataService.js#L47-L66)
 - [dataService.js:526-545](file://backend/services/dataService.js#L526-L545)
 
-### Data Synchronization Pipeline
+### Enhanced Data Synchronization Pipeline
 - In-progress detection:
   - Queries API for IN_PLAY and PAUSED matches.
   - Uses findExisting to locate corresponding local matches.
   - Updates status to LIVE to freeze predictions.
-- Finished match processing:
+- Enhanced finished match processing:
   - Queries API for FINISHED matches.
   - Filters out matches already marked COMPLETED.
-  - Validates full-time scores; skips if null.
-  - Applies reverse mapping to handle API home/away swaps.
+  - Applies sophisticated validation logic to detect and correct penalty shootout scores.
+  - Uses sanity checks to identify when penalty scores are incorrectly placed in full-time fields.
+  - Automatically corrects scores by using extraTime data when available or assuming 0-0 draw scenarios.
+  - Handles home/away reversal via reverse mapping.
   - Calls analysisService.recordMatchResult to persist results and update standings/bracket.
+
+**Updated** Enhanced with sophisticated validation logic that detects incorrectly placed penalty scores and automatically corrects them using extraTime data or reasonable assumptions.
 
 ```mermaid
 sequenceDiagram
 participant DS as "dataService"
 participant API as "football-data.org"
+participant Validator as "Penalty Validation"
 participant DB as "SQLite"
 participant AS as "analysisService"
 DS->>API : GET /competitions/WC/matches?status=FINISHED
 API-->>DS : List of finished matches
 loop For each finished match
 DS->>DB : SELECT match by mapped teams
-DS->>DS : Validate scores and penalties
+DS->>DS : Extract scores and validate
+DS->>Validator : Check for penalty shootout errors
+Validator->>Validator : Detect FT >= 3 with penalty existence
+Validator->>Validator : Use extraTime if available
+Validator->>Validator : Assume 0-0 draw if no extra time
 DS->>AS : recordMatchResult(matchId, homeScore, awayScore, pens?)
 AS->>DB : UPDATE matches, standings, bracket
 AS-->>DS : Success
@@ -255,11 +289,11 @@ end
 ```
 
 **Diagram sources**
-- [dataService.js:564-596](file://backend/services/dataService.js#L564-L596)
+- [dataService.js:564-631](file://backend/services/dataService.js#L564-L631)
 - [analysisService.js:76-218](file://backend/services/analysisService.js#L76-L218)
 
 **Section sources**
-- [dataService.js:564-596](file://backend/services/dataService.js#L564-L596)
+- [dataService.js:564-631](file://backend/services/dataService.js#L564-L631)
 - [analysisService.js:76-218](file://backend/services/analysisService.js#L76-L218)
 
 ### Prediction Engine Integration and Prevention of Updates During Active Matches
@@ -404,6 +438,7 @@ AS --> DB
 - Parallelization: Data service fetches form and H2H data in parallel where applicable.
 - Caching: TTL-based caching reduces API load and improves responsiveness.
 - Status freezing: LIVE status prevents unnecessary prediction recomputation during matches.
+- Enhanced validation: Sophisticated penalty shootout detection adds minimal overhead while significantly improving data accuracy.
 
 ## Troubleshooting Guide
 Common issues and resolutions:
@@ -416,15 +451,21 @@ Common issues and resolutions:
 - API home/away mismatch:
   - Symptom: Warning about reversed pairing; scores swapped accordingly.
   - Resolution: Confirm team ID mappings and DB pairing alignment.
+- Penalty shootout score errors:
+  - Symptom: FT scores appear unusually high (>= 3) with penalty existence.
+  - Resolution: System automatically detects and corrects by using extraTime data or assuming 0-0 draw.
 - Prediction updates during active matches:
   - Behavior: Predictions are returned from cache for LIVE/COMPLETED matches.
   - Resolution: Allow predictions to remain frozen until match completion is recorded.
+
+**Updated** Added troubleshooting guidance for penalty shootout score errors and the automatic correction mechanisms.
 
 **Section sources**
 - [dataService.js:515-518](file://backend/services/dataService.js#L515-L518)
 - [dataService.js:577-580](file://backend/services/dataService.js#L577-L580)
 - [dataService.js:541-542](file://backend/services/dataService.js#L541-L542)
+- [dataService.js:584-610](file://backend/services/dataService.js#L584-L610)
 - [predictionEngine.js:710-721](file://backend/services/predictionEngine.js#L710-L721)
 
 ## Conclusion
-The live data integration system provides robust synchronization with the football-data.org API, ensuring accurate match status transitions and result recording. It leverages team ID mappings, caching, and careful error handling to maintain reliability. By setting matches to LIVE during active play, it prevents prediction updates and preserves pre-match predictions. The analysis service then safely records results, updates standings and brackets, and feeds model performance metrics, completing the end-to-end pipeline.
+The live data integration system provides robust synchronization with the football-data.org API, ensuring accurate match status transitions and result recording. The enhanced syncLiveResults function includes sophisticated validation logic to detect and correct penalty shootout scores incorrectly placed in full-time fields, significantly improving data accuracy. It leverages team ID mappings, caching, and careful error handling to maintain reliability. By setting matches to LIVE during active play, it prevents prediction updates and preserves pre-match predictions. The analysis service then safely records results, updates standings and brackets, and feeds model performance metrics, completing the end-to-end pipeline with enhanced accuracy and reliability.
