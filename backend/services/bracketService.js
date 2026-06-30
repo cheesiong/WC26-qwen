@@ -991,8 +991,12 @@ function generateRoadToFinal() {
       const matches = allDefs[stage].map(bm => {
         const dbM = matchById[bm.matchId];
         let home = null, away = null, winner = null, score = null;
+        // Per-match actual status: a match is "actual" if the stage is complete
+        // OR if this individual match is completed
+        const matchIsCompleted = dbM && dbM.status === 'COMPLETED';
+        const matchIsActual = isActual || matchIsCompleted;
 
-        if (isActual && dbM) {
+        if (matchIsActual && dbM) {
           home = teamsById[dbM.home_team] || null;
           away = teamsById[dbM.away_team] || null;
           winner = dbM.winner ? teamsById[dbM.winner] || null : null;
@@ -1021,14 +1025,14 @@ function generateRoadToFinal() {
           ? Math.round(pred.prob_home / (pred.prob_home + pred.prob_away) * 100)
           : (home && away ? eloP(home, away) : null);
 
-        // For actual matches, determine prediction accuracy
+        // For completed matches, determine prediction accuracy
         let predictedWinner = null;
         let predictionCorrect = null;
-        if (isActual && dbM && home && away) {
+        if (matchIsCompleted && dbM && home && away) {
           const matchPred = predByMatch[bm.matchId];
           if (matchPred) {
-            predictedWinner = matchPred.prob_home >= matchPred.prob_away ? home : away;
-            predictionCorrect = dbM.winner && predictedWinner && dbM.winner === predictedWinner.id;
+            predictedWinner = matchPred.prob_home >= matchPred.prob_away ? home.id : away.id;
+            predictionCorrect = dbM.winner ? dbM.winner === predictedWinner : null;
           }
         }
 
@@ -1038,8 +1042,8 @@ function generateRoadToFinal() {
           away: away ? { id: away.id, name: away.name, flag: away.flag, winPct: pHome != null ? 100 - pHome : null } : null,
           winner: winner ? { id: winner.id, name: winner.name, flag: winner.flag } : null,
           score,
-          isActual,
-          predictedWinner: predictedWinner ? { id: predictedWinner.id } : null,
+          isActual: matchIsActual,
+          predictedWinner: predictedWinner ? { id: predictedWinner } : null,
           predictionCorrect,
         };
       });
