@@ -260,3 +260,24 @@ docker compose up -d
 ```
 
 Set environment variables via `backend/.env`. See `docker-compose.yml` for service definitions.
+
+## Automated Tasks (Cron Jobs)
+
+The backend runs several scheduled tasks (all times in SGT / Asia/Singapore):
+
+| Job | Schedule | Description |
+|-----|----------|-------------|
+| **Live results sync** | Every 5 minutes | Fetches live scores from football-data.org, updates match statuses (LIVE/COMPLETED) |
+| **Prediction regeneration** | Hourly, midnight–noon | Re-runs predictions for upcoming matches with latest data |
+| **Prediction regeneration** | 8:30pm, 9:30pm | Evening prediction update for primetime matches |
+| **Lineup fetch** | Every 15 minutes | Checks for confirmed lineups within 2 hours of kickoff; triggers re-prediction when found |
+| **Bracket update** | Hourly, midnight–noon | Advances winners to next round, re-predicts upcoming knockout matches |
+| **SSL certificate renewal** | Daily, 3:00am | Certbot auto-renewal (container-level cron, only if `DOMAIN` is set) |
+
+### Prediction Accuracy Tracking
+
+The bracket view displays prediction accuracy indicators for completed matches:
+- **✓ Green tick** — team was correctly predicted to advance
+- **✗ Red cross** — team was wrongly predicted (or lost when predicted to win)
+
+Predictions are based on 90-minute FT results. Extra time and penalties are stored separately and only used to determine knockout round winners.
