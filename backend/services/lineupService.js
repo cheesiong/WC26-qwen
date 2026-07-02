@@ -81,20 +81,53 @@ function ensureLineupTable() {
 }
 
 // ── Fetch from football-data.org API ─────────────────────────────
-async function fetchLineupFromAPI(matchId, apiMatchId) {
+async function fetchLineupFromAPI(homeTeamName, awayTeamName, matchDate) {
   const API_KEY = process.env.FOOTBALL_DATA_API_KEY;
-  if (!API_KEY || !apiMatchId) return null;
+  if (!API_KEY) return null;
 
   try {
+    // Query matches for this date and find the matching one
     const resp = await axios.get(
-      `https://api.football-data.org/v4/matches/${apiMatchId}`,
+      `https://api.football-data.org/v4/matches`,
+      {
+        headers: { 'X-Auth-Token': API_KEY },
+        params: { dateFrom: matchDate, dateTo: matchDate },
+        timeout: 10000
+      }
+    );
+
+    const matches = resp.data.matches || [];
+    
+    // Find matching match by team names
+    const match = matches.find(m => {
+      const homeName = m.homeTeam?.name?.toLowerCase() || '';
+      const awayName = m.awayTeam?.name?.toLowerCase() || '';
+      const targetHome = homeTeamName.toLowerCase();
+      const targetAway = awayTeamName.toLowerCase();
+      
+      // Try exact match first
+      if (homeName === targetHome && awayName === targetAway) return true;
+      
+      // Try partial match (e.g., "United States" vs "USA")
+      if (homeName.includes(targetHome) || targetHome.includes(homeName)) {
+        if (awayName.includes(targetAway) || targetAway.includes(awayName)) return true;
+      }
+      
+      return false;
+    });
+
+    if (!match) return null;
+    
+    // Fetch full match details with lineups
+    const matchResp = await axios.get(
+      `https://api.football-data.org/v4/matches/${match.id}`,
       { headers: { 'X-Auth-Token': API_KEY }, timeout: 8000 }
     );
 
-    const match = resp.data;
-    if (!match.lineups || match.lineups.length < 2) return null;
+    const matchData = matchResp.data;
+    if (!matchData.lineups || matchData.lineups.length < 2) return null;
 
-    return match.lineups.map(side => ({
+    return matchData.lineups.map(side => ({
       formation: side.formation,
       coach: side.coach?.name || null,
       starters: (side.startXI || []).map(p => ({
@@ -107,7 +140,8 @@ async function fetchLineupFromAPI(matchId, apiMatchId) {
         position: p.position || p.player?.position,
       })),
     }));
-  } catch {
+  } catch (e) {
+    console.error('[lineup] API fetch error:', e.message);
     return null;
   }
 }
@@ -401,9 +435,8 @@ async function fetchLineup(matchId) {
   let source = 'none';
 
   // 1. football-data.org API
-  const apiMatchId = null; // Would need to map our match ID to their ID
   if (process.env.FOOTBALL_DATA_API_KEY) {
-    rawLineups = await fetchLineupFromAPI(matchId, apiMatchId);
+    rawLineups = await fetchLineupFromAPI(match.home_name, match.away_name, match.scheduled_date);
     if (rawLineups) source = 'api';
   }
 

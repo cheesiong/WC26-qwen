@@ -649,7 +649,13 @@ async function runLineupCron() {
     return hoursUntil >= 0 && hoursUntil <= 2;
   });
 
-  if (upcoming.length === 0) return;
+  if (upcoming.length === 0) {
+    // Log occasionally to confirm cron is running (every ~6 hours)
+    if (now.getMinutes() === 0 && now.getHours() % 6 === 0) {
+      console.log(`[cron] lineup run: no matches within 2h of KO (checked ${matches.length} scheduled)`);
+    }
+    return;
+  }
   console.log(`[cron] lineup run: ${upcoming.length} match(es) within 2h of KO`);
 
   for (const m of upcoming) {
