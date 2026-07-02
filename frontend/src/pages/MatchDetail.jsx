@@ -231,10 +231,15 @@ function PredictionHistoryPanel({ history, homeName, awayName, homeFlag, awayFla
                         <span className="text-xs text-apple-tertiary">{snap.most_likely_score}</span>
                       </div>
                       <MiniProbBar probHome={snap.prob_home} probDraw={snap.prob_draw} probAway={snap.prob_away} />
-                      <div className="flex justify-between text-apple-secondary mt-1" style={{ fontSize: '10px' }}>
+                      <div className="relative flex mt-1" style={{ fontSize: '10px' }}>
                         <span className="text-cn-red">{fmtPct(snap.prob_home)}</span>
-                        <span className="text-apple-secondary">{fmtPct(snap.prob_draw)}</span>
-                        <span className="text-cn-gold">{fmtPct(snap.prob_away)}</span>
+                        <span
+                          className="absolute -translate-x-1/2 text-apple-secondary"
+                          style={{ left: `${((snap.prob_home || 0) + (snap.prob_draw || 0) / 2) * 100}%` }}
+                        >
+                          {fmtPct(snap.prob_draw)}
+                        </span>
+                        <span className="text-cn-gold ml-auto">{fmtPct(snap.prob_away)}</span>
                       </div>
                     </div>
                   );
