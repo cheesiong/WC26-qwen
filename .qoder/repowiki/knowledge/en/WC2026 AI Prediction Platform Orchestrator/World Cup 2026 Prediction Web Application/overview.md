@@ -1,1 +1,0 @@
-A React-based frontend for predicting World Cup 2026 match outcomes, displaying tournament brackets, and visualizing team statistics with bilingual support.

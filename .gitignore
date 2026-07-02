@@ -9,5 +9,6 @@ dist/
 db_data/
 .gstack/
 .DS_Store
+/.qoder/
 /screenshot-*.png
 architecture-diagram.png

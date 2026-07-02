@@ -1,3 +1,0 @@
-- Requires `DASHSCOPE_API_KEY` in `.env` for LLM access.
-- Backtesting available via `node scripts/backtest.js [baseline|v2|both] [--since=YEAR]`.
-- Start command: `npm start` runs `database/seed.js` then `server.js`.

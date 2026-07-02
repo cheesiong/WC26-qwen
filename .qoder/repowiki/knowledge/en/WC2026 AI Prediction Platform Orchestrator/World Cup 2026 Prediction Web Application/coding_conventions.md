@@ -1,3 +1,0 @@
-- Custom hooks (e.g., `useT`, `useTheme`, `useLang`) are used extensively to access context values and utility functions across components.
-- Components utilize `lucide-react` icons with consistent sizing and stroke-width adjustments based on active states.
-- Internationalization is handled via a dot-notation key lookup system (e.g., 'nav.home') provided by the `useT` hook.

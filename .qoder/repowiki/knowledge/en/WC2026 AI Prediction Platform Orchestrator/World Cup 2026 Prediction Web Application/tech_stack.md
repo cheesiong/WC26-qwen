@@ -1,1 +1,0 @@
-React 18, Vite, Tailwind CSS, Axios, react-router-dom, react-helmet-async, framer-motion, recharts, lucide-react, vitest, react-snap

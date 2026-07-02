@@ -1,1 +1,0 @@
-Orchestrates Qwen-based multi-agent systems for match predictions, processes results to update model weights and ELO ratings, and manages tournament bracket progression.

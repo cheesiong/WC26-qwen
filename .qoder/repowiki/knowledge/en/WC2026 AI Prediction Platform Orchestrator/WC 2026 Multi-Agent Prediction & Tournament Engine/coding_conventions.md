@@ -1,3 +1,0 @@
-- Agents expose a standard interface with an `agent` singleton, `buildPrompt(matchContext, domainData)`, and optional `fetchDomainData`.
-- Post-match analysis uses idempotency guards to prevent double-counting scores and standings when re-processing completed matches.
-- Probability calibration is performed in batches (every 10 matches) rather than per-match to avoid noise-fitting on small samples.

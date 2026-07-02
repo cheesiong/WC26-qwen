@@ -1,1 +1,0 @@
-Unifies a React frontend and Node.js backend into a cohesive AI-driven prediction system via Docker Compose and synchronized Bash workflows.
